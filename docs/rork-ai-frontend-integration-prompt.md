@@ -29,7 +29,7 @@ src/
 │   └── database.js (placeholder)
 ├── components/
 │   ├── Nutrition/FoodScanner.js (barcode scanning)
-│   └── Home/AICoachWidget.js (AI chat)
+│   └── Home/AICoachWidget.js (AI insights)
 └── utils/
     └── exercisesData.js (local exercise data)
 ```

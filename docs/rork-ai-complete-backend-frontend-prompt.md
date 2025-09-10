@@ -9,7 +9,7 @@ PeakHeight is a height optimization platform that combines:
 - **Habit Tracking**: Sleep, nutrition, exercise, posture monitoring
 - **Exercise Library**: Height-specific stretches, posture corrections, strength training
 - **Nutrition Scanner**: Barcode scanning for growth-focused nutrition analysis
-- **AI-Powered Insights**: Height predictions, personalized tips, chat helper
+- **AI-Powered Insights**: Height predictions, personalized tips
 - **Community Features**: Progress sharing, challenges, motivation
 - **Gamification**: Streaks, badges, achievements, leaderboards
 
@@ -31,7 +31,7 @@ PeakHeight is a height optimization platform that combines:
 - **Authentication**: Email/password, Google OAuth, Apple Sign-In
 - **Storage**: File storage for user uploads, exercise media
 - **Real-time**: WebSocket connections for live updates
-- **AI Integration**: OpenAI GPT-4 for height predictions and chat
+- **AI Integration**: OpenAI GPT-4 for height predictions and insights
 - **Monetization**: RevenueCat for premium subscriptions
 
 ## 📊 Complete Database Schema

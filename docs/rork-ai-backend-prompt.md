@@ -9,7 +9,7 @@ PeakHeight is a comprehensive height optimization platform that combines:
 - **Habit Tracking**: Sleep, nutrition, exercise, posture monitoring
 - **Exercise Library**: Height-specific stretches, posture corrections, strength training
 - **Nutrition Scanner**: Barcode scanning for growth-focused nutrition analysis
-- **AI-Powered Insights**: Height predictions, personalized tips, chat helper
+- **AI-Powered Insights**: Height predictions, personalized tips
 - **Community Features**: Progress sharing, challenges, motivation
 - **Gamification**: Streaks, badges, achievements, leaderboards
 
@@ -76,7 +76,7 @@ PeakHeight is a comprehensive height optimization platform that combines:
 **Changes Needed**:
 - Fetch real user height data from backend
 - Calculate actual growth factors from habit logs
-- Connect AI coach to backend chat system
+- Connect AI coach to backend insights system
 - Implement real-time updates for progress
 
 #### 3. Exercise Library Backend Integration
@@ -619,7 +619,7 @@ CREATE TABLE ai_insights (
 - Community post updates
 - Streak notifications
 - Challenge progress updates
-- AI chat responses
+- AI insights updates
 - Real-time height potential updates
 
 ### WebSocket Implementation
@@ -653,12 +653,6 @@ const subscription = supabase
 - **Delivery**: Push notifications and in-app display
 - **A/B Testing**: Different tip formats and timing
 
-### 3. Chat Helper
-- **Model**: GPT-4 with custom system prompts
-- **Context**: User's current habits, goals, progress, and height data
-- **Features**: Habit suggestions, exercise recommendations, motivation, Q&A
-- **Rate Limiting**: 50 messages/day for free users, unlimited for premium
-- **Personality**: Encouraging, scientific, growth-focused
 
 ### 4. Content Moderation
 - **Automated Screening**: OpenAI moderation API
@@ -680,7 +674,7 @@ const subscription = supabase
 - Detailed progress analytics and reports
 - Priority community features and early access
 - Ad-free experience
-- Unlimited AI chat
+- Unlimited AI insights
 - Advanced habit tracking and analytics
 - Personalized meal plans
 - Expert Q&A sessions
