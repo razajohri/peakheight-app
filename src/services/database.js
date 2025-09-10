@@ -316,7 +316,7 @@ export class DatabaseService {
       if (startDate) {
         query = query.gte('scanned_at', startDate);
       }
-      
+
       if (endDate) {
         query = query.lte('scanned_at', endDate);
       }

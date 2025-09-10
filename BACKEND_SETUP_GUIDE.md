@@ -33,8 +33,8 @@ The schema includes RLS policies, but you may need to verify they're active:
 
 ```sql
 -- Check RLS status
-SELECT schemaname, tablename, rowsecurity 
-FROM pg_tables 
+SELECT schemaname, tablename, rowsecurity
+FROM pg_tables
 WHERE schemaname = 'public';
 ```
 
@@ -45,7 +45,7 @@ WHERE schemaname = 'public';
 In your Supabase dashboard, go to Authentication > Providers:
 
 1. **Email/Password**: Enable (default)
-2. **Google OAuth**: 
+2. **Google OAuth**:
    - Enable Google provider
    - Add your Google OAuth credentials
    - Set redirect URL: `peakheight://auth/callback`
@@ -58,7 +58,7 @@ In your Supabase dashboard, go to Authentication > Providers:
 
 ```sql
 -- Update auth settings
-UPDATE auth.users SET 
+UPDATE auth.users SET
   email_confirm = false,
   phone_confirm = false
 WHERE true;
@@ -108,7 +108,7 @@ The database includes default plans, but you can customize them:
 
 ```sql
 -- Update subscription plans
-UPDATE subscription_plans 
+UPDATE subscription_plans
 SET price = 9.99, features = '["unlimited_ai", "advanced_analytics"]'
 WHERE id = 'monthly';
 ```

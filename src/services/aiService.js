@@ -11,7 +11,7 @@ export class AIService {
   static async generateHeightPrediction(userId, userData) {
     try {
       const prompt = this.buildHeightPredictionPrompt(userData);
-      
+
       const response = await fetch(`${API_ENDPOINTS.OPENAI}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -103,7 +103,7 @@ Be encouraging but realistic, focusing on science-based factors.
   static async generateDailyTip(userId, userContext) {
     try {
       const prompt = this.buildDailyTipPrompt(userContext);
-      
+
       const response = await fetch(`${API_ENDPOINTS.OPENAI}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -188,7 +188,7 @@ Provide one specific, actionable tip that addresses their current situation and 
   static async analyzeProgress(userId, progressData) {
     try {
       const prompt = this.buildProgressAnalysisPrompt(progressData);
-      
+
       const response = await fetch(`${API_ENDPOINTS.OPENAI}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -317,7 +317,7 @@ Provide:
   static determineModerationAction(moderation, contentType) {
     const threshold = MODERATION_THRESHOLDS[contentType.toUpperCase()] || 0.8;
     const maxScore = Math.max(...Object.values(moderation.category_scores));
-    
+
     if (maxScore >= threshold) {
       return 'rejected';
     } else if (maxScore >= 0.5) {
@@ -335,7 +335,7 @@ Provide:
   static async generateNutritionAdvice(userId, nutritionData) {
     try {
       const prompt = this.buildNutritionAdvicePrompt(nutritionData);
-      
+
       const response = await fetch(`${API_ENDPOINTS.OPENAI}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -443,12 +443,12 @@ Provide:
     try {
       const today = new Date().toISOString().split('T')[0];
       const { data, error } = await DatabaseService.getAIInsights(userId, null, 1000);
-      
+
       if (error) {
         return { canUse: true, remaining: 50 };
       }
 
-      const todayUsage = data.filter(insight => 
+      const todayUsage = data.filter(insight =>
         insight.created_at.startsWith(today)
       ).length;
 
@@ -466,7 +466,7 @@ Provide:
   static async generateBatchInsights(userIds, insightType) {
     try {
       const insights = [];
-      
+
       for (const userId of userIds) {
         try {
           let result;
@@ -480,7 +480,7 @@ Provide:
             default:
               continue;
           }
-          
+
           if (result.error) {
             console.error(`Batch insight error for user ${userId}:`, result.error);
           } else {

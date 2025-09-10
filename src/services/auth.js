@@ -250,7 +250,7 @@ export class AuthService {
       }
 
       if (data) {
-        const isActive = data.status === 'active' && 
+        const isActive = data.status === 'active' &&
           new Date(data.end_date) > new Date();
         return { isPremium: isActive, subscription: data };
       }
@@ -381,19 +381,19 @@ export class AuthService {
   // Helper method to validate password strength
   static validatePassword(password) {
     const errors = [];
-    
+
     if (password.length < 6) {
       errors.push('Password must be at least 6 characters long');
     }
-    
+
     if (!/[A-Z]/.test(password)) {
       errors.push('Password must contain at least one uppercase letter');
     }
-    
+
     if (!/[a-z]/.test(password)) {
       errors.push('Password must contain at least one lowercase letter');
     }
-    
+
     if (!/\d/.test(password)) {
       errors.push('Password must contain at least one number');
     }

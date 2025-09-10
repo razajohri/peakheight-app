@@ -45,7 +45,7 @@ export class SubscriptionService {
     try {
       // This would integrate with RevenueCat SDK
       // For now, we'll simulate the purchase process
-      
+
       const { data: plan, error: planError } = await supabase
         .from('subscription_plans')
         .select('*')
@@ -81,7 +81,7 @@ export class SubscriptionService {
       // Update user premium status
       await supabase
         .from('users')
-        .update({ 
+        .update({
           premium_status: true,
           premium_expires_at: subscriptionData.end_date,
         })
@@ -99,7 +99,7 @@ export class SubscriptionService {
     try {
       // This would integrate with RevenueCat SDK
       // For now, we'll check existing subscriptions
-      
+
       const { data, error } = await supabase
         .from('user_subscriptions')
         .select('*')
@@ -115,7 +115,7 @@ export class SubscriptionService {
         // Update user premium status
         await supabase
           .from('users')
-          .update({ 
+          .update({
             premium_status: true,
             premium_expires_at: data.end_date,
           })
@@ -136,7 +136,7 @@ export class SubscriptionService {
     try {
       const { data, error } = await supabase
         .from('user_subscriptions')
-        .update({ 
+        .update({
           status: 'cancelled',
           auto_renew: false,
         })
@@ -175,13 +175,13 @@ export class SubscriptionService {
       }
 
       if (data) {
-        const isActive = data.status === 'active' && 
+        const isActive = data.status === 'active' &&
           new Date(data.end_date) > new Date();
-        
-        return { 
-          hasAccess: isActive, 
+
+        return {
+          hasAccess: isActive,
           subscription: data,
-          error: null 
+          error: null
         };
       }
 
@@ -196,7 +196,7 @@ export class SubscriptionService {
   static async checkFeatureAccess(userId, feature) {
     try {
       const { hasAccess, subscription } = await this.checkPremiumAccess(userId);
-      
+
       if (!hasAccess) {
         return { hasAccess: false, reason: 'No active subscription' };
       }
@@ -215,9 +215,9 @@ export class SubscriptionService {
       const features = plan.features || [];
       const hasFeature = features.includes(feature);
 
-      return { 
-        hasAccess: hasFeature, 
-        reason: hasFeature ? 'Feature included' : 'Feature not included in plan' 
+      return {
+        hasAccess: hasFeature,
+        reason: hasFeature ? 'Feature included' : 'Feature not included in plan'
       };
     } catch (error) {
       console.error('Check feature access error:', error);
@@ -229,7 +229,7 @@ export class SubscriptionService {
   static async getPremiumFeatures(userId) {
     try {
       const { hasAccess, subscription } = await this.checkPremiumAccess(userId);
-      
+
       if (!hasAccess) {
         return { features: [], error: null };
       }
@@ -301,12 +301,12 @@ export class SubscriptionService {
       }
 
       // Update user premium status
-      const isActive = statusData.status === 'active' && 
+      const isActive = statusData.status === 'active' &&
         new Date(statusData.end_date) > new Date();
 
       await supabase
         .from('users')
-        .update({ 
+        .update({
           premium_status: isActive,
           premium_expires_at: statusData.end_date,
         })
@@ -383,7 +383,7 @@ export class SubscriptionService {
       // Update user premium status
       await supabase
         .from('users')
-        .update({ 
+        .update({
           premium_status: true,
           premium_expires_at: trialData.end_date,
         })
@@ -410,7 +410,7 @@ export class SubscriptionService {
 
       // User is eligible if they've never had a subscription
       const hasHadSubscription = data.length > 0;
-      
+
       return { eligible: !hasHadSubscription, error: null };
     } catch (error) {
       console.error('Check trial eligibility error:', error);
@@ -427,7 +427,7 @@ export class SubscriptionService {
     try {
       // This would integrate with RevenueCat promotional offers
       // For now, we'll simulate the process
-      
+
       const validPromoCodes = {
         'HEIGHT2024': { discount: 0.2, description: '20% off first month' },
         'STUDENT50': { discount: 0.5, description: '50% off for students' },
@@ -435,16 +435,16 @@ export class SubscriptionService {
       };
 
       const promo = validPromoCodes[promoCode.toUpperCase()];
-      
+
       if (!promo) {
         return { valid: false, error: 'Invalid promotional code' };
       }
 
-      return { 
-        valid: true, 
+      return {
+        valid: true,
         discount: promo.discount,
         description: promo.description,
-        error: null 
+        error: null
       };
     } catch (error) {
       console.error('Apply promo code error:', error);
@@ -485,7 +485,7 @@ export class SubscriptionService {
     const expiration = new Date(endDate);
     const diffTime = expiration - now;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     return diffDays;
   }
 

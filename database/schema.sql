@@ -528,20 +528,20 @@ BEGIN
     VALUES (NEW.user_id, NEW.habit_type, 1, 1, NEW.logged_at, NEW.logged_at, 1)
     ON CONFLICT (user_id, habit_type)
     DO UPDATE SET
-        current_streak = CASE 
+        current_streak = CASE
             WHEN NEW.logged_at::date = (last_logged_at + INTERVAL '1 day')::date THEN current_streak + 1
             WHEN NEW.logged_at::date = last_logged_at::date THEN current_streak
             ELSE 1
         END,
-        longest_streak = GREATEST(longest_streak, 
-            CASE 
+        longest_streak = GREATEST(longest_streak,
+            CASE
                 WHEN NEW.logged_at::date = (last_logged_at + INTERVAL '1 day')::date THEN current_streak + 1
                 WHEN NEW.logged_at::date = last_logged_at::date THEN current_streak
                 ELSE 1
             END
         ),
         last_logged_at = NEW.logged_at,
-        streak_started_at = CASE 
+        streak_started_at = CASE
             WHEN NEW.logged_at::date = (last_logged_at + INTERVAL '1 day')::date THEN streak_started_at
             WHEN NEW.logged_at::date = last_logged_at::date THEN streak_started_at
             ELSE NEW.logged_at

@@ -221,7 +221,7 @@ export class RealtimeService {
   static async broadcastAchievement(userId, achievement) {
     try {
       const channel = supabase.channel(`achievement-${userId}`);
-      
+
       await channel.send({
         type: 'broadcast',
         event: 'achievement',
@@ -242,7 +242,7 @@ export class RealtimeService {
   static async broadcastStreakMilestone(userId, streakData) {
     try {
       const channel = supabase.channel(`streak-${userId}`);
-      
+
       await channel.send({
         type: 'broadcast',
         event: 'streak_milestone',
@@ -263,7 +263,7 @@ export class RealtimeService {
   static async broadcastCommunityNotification(userId, notification) {
     try {
       const channel = supabase.channel(`community-${userId}`);
-      
+
       await channel.send({
         type: 'broadcast',
         event: 'community_notification',
@@ -395,7 +395,7 @@ export class RealtimeService {
   // Handle subscription errors
   static handleSubscriptionError(error, channelName) {
     console.error(`Subscription error for ${channelName}:`, error);
-    
+
     // Implement retry logic
     if (error.message.includes('timeout')) {
       setTimeout(() => {
