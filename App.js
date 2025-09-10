@@ -5,7 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 // Screens
 import SplashScreen from './src/screens/SplashScreen';
 
-import CompleteOnboardingFlow from './src/screens/CompleteOnboardingFlow';
+import CompleteOnboardingFlow from './src/screens/onboarding/CompleteOnboardingFlow';
 import AuthScreen from './src/screens/AuthScreen';
 import MainApp from './src/screens/MainApp';
 import ErrorScreen from './src/screens/ErrorScreen';
@@ -29,7 +29,7 @@ export default function App() {
       // Simulate checking authentication state
       setTimeout(() => {
         setIsLoading(false);
-        setCurrentScreen('onboarding');
+        setCurrentScreen('main-app');
       }, 3000);
 
     } catch (error) {

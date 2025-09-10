@@ -9,18 +9,19 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@expo-google-fonts/inter": "^0.4.1",
     "@expo-google-fonts/roboto-condensed": "^0.4.1",
-    "@react-native-community/datetimepicker": "8.4.1",
-    "@react-native-community/slider": "4.5.6",
+    "@react-native-async-storage/async-storage": "1.23.1",
     "expo": "~53.0.22",
     "expo-linear-gradient": "^14.1.5",
     "expo-status-bar": "~2.2.3",
     "lucide-react-native": "^0.542.0",
     "react": "19.0.0",
     "react-native": "0.79.5",
+    "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "5.4.0",
-    "react-native-svg": "15.11.2"
+    "react-native-svg": "15.11.2",
+    "react-native-vector-icons": "^10.3.0",
+    "expo-image-picker": "~16.1.4"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

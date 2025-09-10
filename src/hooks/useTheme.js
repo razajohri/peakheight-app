@@ -3,36 +3,36 @@ import { useMemo } from 'react';
 export function useTheme() {
   const colors = useMemo(() => ({
     // Background colors
-    background: '#1a1a1a',
-    surface: '#1e293b',
-    surfaceElevated: '#334155',
+    background: '#FFFFFF',
+    surface: '#F8F9FA',
+    surfaceElevated: '#F5F5F5',
 
     // Text colors
-    textPrimary: '#ffffff',
-    textSecondary: '#9ca3af',
-    textDisabled: '#6b7280',
+    textPrimary: '#000000',
+    textSecondary: '#666666',
+    textDisabled: '#AAAAAA',
 
     // Accent colors
-    accent: '#3b82f6',
-    accentLight: '#60a5fa',
+    accent: '#000000',
+    accentLight: '#333333',
 
     // Status colors
-    success: '#10b981',
-    warning: '#f59e0b',
-    error: '#ef4444',
+    success: '#000000',
+    warning: '#000000',
+    error: '#FF3B30',
 
     // Feature-specific colors
-    heightGreen: '#10b981',
-    postureBlue: '#3b82f6',
-    habitPurple: '#8b5cf6',
+    heightGreen: '#000000',
+    postureBlue: '#000000',
+    habitPurple: '#000000',
 
     // Border colors
-    border: '#374151',
-    borderLight: '#4b5563',
+    border: '#E5E5E5',
+    borderLight: '#CCCCCC',
 
     // Chart colors
-    chartLine: '#3b82f6',
-    chartArea: 'rgba(59, 130, 246, 0.1)',
+    chartLine: '#000000',
+    chartArea: 'rgba(0, 0, 0, 0.1)',
   }), []);
 
   return { colors };
