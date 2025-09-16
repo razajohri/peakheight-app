@@ -1,19 +1,80 @@
 // Onboarding5.js (Page 5 - What is your height & weight?)
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
 
-const Onboarding5 = ({ navigation }) => {
-  const [measurementSystem, setMeasurementSystem] = useState('imperial'); // 'imperial' or 'metric'
+const Onboarding5 = ({ navigation, data, updateData }) => {
+  const [measurementSystem, setMeasurementSystem] = useState(data.measurementSystem || 'imperial'); // 'imperial' or 'metric'
 
   // Imperial
-  const [feet, setFeet] = useState(5);
-  const [inches, setInches] = useState(8);
-  const [pounds, setPounds] = useState(150);
+  const [feet, setFeet] = useState(data.feet || 5);
+  const [inches, setInches] = useState(data.inches || 6);
+  const [pounds, setPounds] = useState(data.pounds || 150);
 
   // Metric
-  const [cm, setCm] = useState(173);
-  const [kg, setKg] = useState(68);
+  const [cm, setCm] = useState(data.cm || 168);
+  const [kg, setKg] = useState(data.kg || 68);
+
+
+  const updateMeasurementSystem = (system) => {
+    setMeasurementSystem(system);
+    updateData({ measurementSystem: system });
+  };
+
+  const updateHeightWeight = () => {
+    if (measurementSystem === 'imperial') {
+      const heightInCm = (feet * 30.48) + (inches * 2.54);
+      const weightInKg = pounds * 0.453592;
+      updateData({
+        feet,
+        inches,
+        pounds,
+        currentHeight: heightInCm,
+        currentWeight: weightInKg
+      });
+    } else {
+      const heightInFeet = Math.floor(cm / 30.48);
+      const heightInInches = Math.round((cm % 30.48) / 2.54);
+      const weightInPounds = Math.round(kg / 0.453592);
+      updateData({
+        cm,
+        kg,
+        currentHeight: cm,
+        currentWeight: kg,
+        feet: heightInFeet,
+        inches: heightInInches,
+        pounds: weightInPounds
+      });
+    }
+  };
+
+  const handleContinue = () => {
+    // Validate that user has entered valid values
+    if (measurementSystem === 'imperial') {
+      if (feet === 0 && inches === 0) {
+        alert('Please enter your height');
+        return;
+      }
+      if (pounds === 0) {
+        alert('Please enter your weight');
+        return;
+      }
+    } else {
+      if (cm === 0) {
+        alert('Please enter your height');
+        return;
+      }
+      if (kg === 0) {
+        alert('Please enter your weight');
+        return;
+      }
+    }
+
+    updateHeightWeight();
+    navigation.navigate('Onboarding5B');
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -34,7 +95,10 @@ const Onboarding5 = ({ navigation }) => {
                 styles.segmentButton,
                 measurementSystem === 'imperial' && styles.segmentButtonActive
               ]}
-              onPress={() => setMeasurementSystem('imperial')}
+              onPress={async () => {
+                try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+                updateMeasurementSystem('imperial');
+              }}
             >
               <Text style={[
                 styles.segmentButtonText,
@@ -47,7 +111,10 @@ const Onboarding5 = ({ navigation }) => {
                 styles.segmentButton,
                 measurementSystem === 'metric' && styles.segmentButtonActive
               ]}
-              onPress={() => setMeasurementSystem('metric')}
+              onPress={async () => {
+                try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+                updateMeasurementSystem('metric');
+              }}
             >
               <Text style={[
                 styles.segmentButtonText,
@@ -70,10 +137,13 @@ const Onboarding5 = ({ navigation }) => {
                       maximumValue={7}
                       step={1}
                       value={feet}
-                      onValueChange={setFeet}
-                      minimumTrackTintColor="#3B5FE3"
-                      maximumTrackTintColor="#2A2F3E"
-                      thumbTintColor="#3B5FE3"
+                      onValueChange={(value) => {
+                        setFeet(value);
+                        updateHeightWeight();
+                      }}
+                      minimumTrackTintColor="#FFFFFF"
+                      maximumTrackTintColor="#1f1f1f"
+                      thumbTintColor="#FFFFFF"
                     />
                     <Text style={styles.sliderValue}>{feet} ft</Text>
                   </View>
@@ -88,10 +158,13 @@ const Onboarding5 = ({ navigation }) => {
                       maximumValue={11}
                       step={1}
                       value={inches}
-                      onValueChange={setInches}
-                      minimumTrackTintColor="#3B5FE3"
-                      maximumTrackTintColor="#2A2F3E"
-                      thumbTintColor="#3B5FE3"
+                      onValueChange={(value) => {
+                        setInches(value);
+                        updateHeightWeight();
+                      }}
+                      minimumTrackTintColor="#FFFFFF"
+                      maximumTrackTintColor="#1f1f1f"
+                      thumbTintColor="#FFFFFF"
                     />
                     <Text style={styles.sliderValue}>{inches} in</Text>
                   </View>
@@ -107,10 +180,13 @@ const Onboarding5 = ({ navigation }) => {
                     maximumValue={220}
                     step={1}
                     value={cm}
-                    onValueChange={setCm}
-                    minimumTrackTintColor="#3B5FE3"
-                    maximumTrackTintColor="#2A2F3E"
-                    thumbTintColor="#3B5FE3"
+                    onValueChange={(value) => {
+                      setCm(value);
+                      updateHeightWeight();
+                    }}
+                    minimumTrackTintColor="#FFFFFF"
+                    maximumTrackTintColor="#1f1f1f"
+                    thumbTintColor="#FFFFFF"
                   />
                   <Text style={styles.sliderValue}>{cm} cm</Text>
                 </View>
@@ -131,10 +207,13 @@ const Onboarding5 = ({ navigation }) => {
                     maximumValue={300}
                     step={1}
                     value={pounds}
-                    onValueChange={setPounds}
-                    minimumTrackTintColor="#3B5FE3"
-                    maximumTrackTintColor="#2A2F3E"
-                    thumbTintColor="#3B5FE3"
+                    onValueChange={(value) => {
+                      setPounds(value);
+                      updateHeightWeight();
+                    }}
+                    minimumTrackTintColor="#FFFFFF"
+                    maximumTrackTintColor="#1f1f1f"
+                    thumbTintColor="#FFFFFF"
                   />
                   <Text style={styles.sliderValue}>{pounds} lbs</Text>
                 </View>
@@ -149,16 +228,20 @@ const Onboarding5 = ({ navigation }) => {
                     maximumValue={136}
                     step={1}
                     value={kg}
-                    onValueChange={setKg}
-                    minimumTrackTintColor="#3B5FE3"
-                    maximumTrackTintColor="#2A2F3E"
-                    thumbTintColor="#3B5FE3"
+                    onValueChange={(value) => {
+                      setKg(value);
+                      updateHeightWeight();
+                    }}
+                    minimumTrackTintColor="#FFFFFF"
+                    maximumTrackTintColor="#1f1f1f"
+                    thumbTintColor="#FFFFFF"
                   />
                   <Text style={styles.sliderValue}>{kg} kg</Text>
                 </View>
               </View>
             )}
           </View>
+
 
           <View style={styles.confidenceTag}>
             <Text style={styles.confidenceText}>Confidence: High</Text>
@@ -169,7 +252,10 @@ const Onboarding5 = ({ navigation }) => {
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.navigate('Onboarding6')}
+          onPress={async () => {
+            try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+            handleContinue();
+          }}
         >
           <Text style={styles.buttonText}>Continue</Text>
         </TouchableOpacity>
@@ -181,31 +267,31 @@ const Onboarding5 = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0F1D', // Deep navy base
-    paddingTop: 16,
+    backgroundColor: '#000000',
   },
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 24,
+    paddingTop: 4,
     marginBottom: 24,
   },
   progressBar: {
     flex: 1,
     height: 4,
-    backgroundColor: '#2A2F3E', // Darker gray
+    backgroundColor: '#1f1f1f',
     borderRadius: 2,
     marginRight: 12,
   },
   progressFill: {
     height: 4,
-    backgroundColor: '#3B5FE3', // Cobalt accent
+    backgroundColor: '#FFFFFF',
     borderRadius: 2,
   },
   progressText: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#AAAAAA',
+    color: '#9CA3AF',
   },
   scrollView: {
     flex: 1,
@@ -215,18 +301,18 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   title: {
-    fontFamily: 'Playfair Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 28,
     color: '#FFFFFF',
-    marginBottom: 32,
-    letterSpacing: -0.5, // Tighter letter-spacing for headlines
+    marginBottom: 24,
+    letterSpacing: -0.5,
   },
   segmentContainer: {
     flexDirection: 'row',
-    marginBottom: 32,
-    borderRadius: 8,
+    marginBottom: 24,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#D9D9D9', // Platinum gray
+    borderColor: '#1f1f1f',
     overflow: 'hidden',
   },
   segmentButton: {
@@ -235,7 +321,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   segmentButtonActive: {
-    backgroundColor: '#3B5FE3', // Cobalt accent
+    backgroundColor: '#111111',
   },
   segmentButtonText: {
     fontFamily: 'Inter-Medium',
@@ -260,7 +346,7 @@ const styles = StyleSheet.create({
   sliderLabel: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#AAAAAA',
+    color: '#9CA3AF',
     marginBottom: 8,
   },
   sliderValueContainer: {
@@ -280,30 +366,39 @@ const styles = StyleSheet.create({
   },
   confidenceTag: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(59, 95, 227, 0.1)', // Very subtle cobalt accent
+    backgroundColor: '#0a0a0a',
     paddingVertical: 4,
     paddingHorizontal: 12,
-    borderRadius: 4,
+    borderRadius: 8,
     marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#1f1f1f',
   },
   confidenceText: {
     fontFamily: 'Inter-Medium',
     fontSize: 12,
-    color: '#3B5FE3', // Cobalt accent
+    color: '#9CA3AF',
   },
   buttonContainer: {
     padding: 24,
   },
   button: {
-    backgroundColor: '#3B5FE3', // Cobalt accent
-    paddingVertical: 16,
-    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1f1f1f',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
   },
   buttonText: {
     fontFamily: 'Inter-SemiBold',
-    fontSize: 18,
-    color: '#FFFFFF',
+    fontSize: 16,
+    color: '#000000',
   },
 });
 

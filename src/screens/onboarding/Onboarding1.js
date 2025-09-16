@@ -1,24 +1,34 @@
 // Onboarding1.js (Page 1 - Maximize your full height potential)
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView } from 'react-native';
+import * as Haptics from 'expo-haptics';
 
 const Onboarding1 = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.contentContainer}>
-        <Image
-          source={require('../../../assets/peakheight-logo.jpg')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
+        <View style={styles.imageContainer}>
+          <Image
+            source={require('../../../assets/peakheight-logo-removebg-preview.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
 
-        <Text style={styles.title}>Maximize your full height potential</Text>
+        <Text style={styles.title}>Lets Maximize your full height potential</Text>
 
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.navigate('Onboarding2')}
+          activeOpacity={0.85}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            navigation.navigate('Onboarding2');
+          }}
         >
-          <Text style={styles.buttonText}>Get Started</Text>
+          <View style={styles.buttonContent}>
+            <Text style={styles.buttonText}>Get Started</Text>
+            <Text style={styles.buttonArrow}>→</Text>
+          </View>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -28,37 +38,62 @@ const Onboarding1 = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0F1D', // Deep navy base
+    backgroundColor: '#000000',
   },
   contentContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 32,
+    backgroundColor: '#000000',
+  },
+  imageContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 48,
+    marginTop: -24,
   },
   logo: {
     width: 120,
     height: 120,
-    marginBottom: 48,
   },
   title: {
-    fontFamily: 'Playfair Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 32,
     color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 64,
-    letterSpacing: -0.5, // Tighter letter-spacing for headlines
+    letterSpacing: -0.5,
   },
   button: {
-    backgroundColor: '#3B5FE3', // Cobalt accent
-    paddingVertical: 16,
-    paddingHorizontal: 64,
-    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1f1f1f',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   buttonText: {
     fontFamily: 'Inter-SemiBold',
-    fontSize: 18,
-    color: '#FFFFFF',
+    fontSize: 16,
+    color: '#000000',
+  },
+  buttonArrow: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 16,
+    color: '#000000',
+    marginLeft: 8,
   },
 });
 

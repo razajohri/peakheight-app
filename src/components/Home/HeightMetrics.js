@@ -1,28 +1,51 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useUser } from '../../contexts/UserContext';
 
 const HeightMetrics = () => {
+  const { userProfile, loading, getCurrentHeight, getTargetHeight } = useUser();
+
+  const currentHeight = getCurrentHeight();
+  const targetHeight = getTargetHeight();
+
+  if (loading) {
+    return (
+      <View style={styles.metricsRow}>
+        <View style={styles.metricCard}>
+          <Text style={styles.metricLabel}>CURRENT HEIGHT</Text>
+          <Text style={styles.metricValue}>Loading...</Text>
+        </View>
+        <View style={styles.metricCard}>
+          <Text style={styles.metricLabel}>TARGET HEIGHT</Text>
+          <Text style={styles.metricValue}>Loading...</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.metricsRow}>
       {/* Current Height */}
       <View style={styles.metricCard}>
         <Text style={styles.metricLabel}>CURRENT HEIGHT</Text>
-        <View style={styles.metricRow}>
-          <Text style={styles.metricValue}>5'10"</Text>
-          <View style={styles.trendContainer}>
-            <Icon name="arrow-up" size={14} color="#4CD964" />
-            <Text style={styles.trendPositive}>+0.5 in</Text>
-          </View>
-        </View>
-        <Text style={styles.metricSubtext}>Since last month</Text>
+        <Text style={styles.metricValue}>
+          {currentHeight ? currentHeight.display : 'Not set'}
+        </Text>
+        <Text style={styles.metricSubtext}>
+          {currentHeight ? 'Since last month' : 'Complete onboarding to set'}
+        </Text>
       </View>
 
-      {/* Predicted Height */}
+      {/* Target Height */}
       <View style={styles.metricCard}>
-        <Text style={styles.metricLabel}>PREDICTED HEIGHT</Text>
-        <Text style={styles.metricValue}>5'11" - 6'2"</Text>
-        <Text style={styles.metricSubtext}>Based on your data</Text>
+        <Text style={styles.metricLabel}>TARGET HEIGHT</Text>
+        <Text style={styles.metricValue}>
+          {targetHeight ? targetHeight.display : 'Not set'}
+        </Text>
+        <Text style={styles.metricSubtext}>
+          {targetHeight ? 'Your goal' : 'Complete onboarding to set'}
+        </Text>
       </View>
     </View>
   );
@@ -48,27 +71,11 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     letterSpacing: 0.5,
   },
-  metricRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
   metricValue: {
     color: '#000000',
     fontSize: 16,
     fontWeight: 'bold',
-    flex: 1,
-  },
-  trendContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  trendPositive: {
-    color: '#4CD964',
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 2,
+    marginBottom: 4,
   },
   metricSubtext: {
     color: '#666666',

@@ -607,6 +607,54 @@ INSERT INTO badge_definitions (id, name, description, icon, color, criteria, sor
 ('community_champion', 'Community Champion', 'Get 100 likes on posts', 'heart', '#D0021B', '{"total_likes": 100}', 5);
 
 -- =============================================
+-- 8. DATABASE FUNCTIONS
+-- =============================================
+
+-- Function to increment post likes count
+CREATE OR REPLACE FUNCTION increment_post_likes(post_id UUID)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE posts
+  SET likes_count = likes_count + 1,
+      updated_at = NOW()
+  WHERE id = post_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to decrement post likes count
+CREATE OR REPLACE FUNCTION decrement_post_likes(post_id UUID)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE posts
+  SET likes_count = GREATEST(likes_count - 1, 0),
+      updated_at = NOW()
+  WHERE id = post_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to increment post comments count
+CREATE OR REPLACE FUNCTION increment_post_comments(post_id UUID)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE posts
+  SET comments_count = comments_count + 1,
+      updated_at = NOW()
+  WHERE id = post_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to decrement post comments count
+CREATE OR REPLACE FUNCTION decrement_post_comments(post_id UUID)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE posts
+  SET comments_count = GREATEST(comments_count - 1, 0),
+      updated_at = NOW()
+  WHERE id = post_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =============================================
 -- SCHEMA COMPLETE
 -- =============================================
 

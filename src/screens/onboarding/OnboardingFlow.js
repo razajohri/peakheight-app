@@ -10,6 +10,7 @@ import {
   Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { FontAwesome } from '@expo/vector-icons';
 // import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import Button from '../components/UI/Button';
@@ -24,10 +25,22 @@ import {
   BARRIERS,
   GENDER_OPTIONS,
   DEFAULT_VALUES,
-  SUBSCRIPTION_PLANS
+  SUBSCRIPTION_PLANS,
+  TYPOGRAPHY
 } from '../utils/constants';
 
 const { width, height } = Dimensions.get('window');
+
+// Local black & white theme for onboarding only
+const THEME = {
+  PRIMARY: '#ffffff',
+  BACKGROUND: '#000000',
+  SURFACE: '#0a0a0a',
+  TEXT_PRIMARY: '#ffffff',
+  TEXT_SECONDARY: '#9CA3AF',
+  SUCCESS: '#22c55e',
+  BORDER: '#222222'
+};
 
 export default function OnboardingFlow({
   onComplete,
@@ -104,6 +117,7 @@ export default function OnboardingFlow({
       <Button
         title="Continue"
         onPress={nextStep}
+        haptic
         style={styles.continueButton}
       />
     </View>
@@ -123,6 +137,13 @@ export default function OnboardingFlow({
         >
           <Text style={styles.ageButtonText}>-</Text>
         </TouchableOpacity>
+
+        <Button
+          title="Start Monthly Plan"
+          onPress={nextStep}
+          haptic
+          style={styles.continueButton}
+        />
         <TouchableOpacity
           style={styles.ageButton}
           onPress={() => updateData('age', Math.min(50, (data.age || DEFAULT_VALUES.AGE) + 1))}
@@ -133,6 +154,7 @@ export default function OnboardingFlow({
       <Button
         title="Continue"
         onPress={nextStep}
+        haptic
         style={styles.continueButton}
       />
     </View>
@@ -183,6 +205,7 @@ export default function OnboardingFlow({
       <Button
         title="Continue"
         onPress={nextStep}
+        haptic
         style={styles.continueButton}
       />
     </View>
@@ -225,6 +248,7 @@ export default function OnboardingFlow({
       <Button
         title="Continue"
         onPress={nextStep}
+        haptic
         style={styles.continueButton}
       />
     </View>
@@ -312,10 +336,12 @@ export default function OnboardingFlow({
           title="Skip for now"
           variant="text"
           onPress={nextStep}
+          haptic
         />
         <Button
           title="Continue"
           onPress={nextStep}
+          haptic
           style={styles.continueButton}
         />
       </View>
@@ -346,6 +372,7 @@ export default function OnboardingFlow({
       <Button
         title="Continue"
         onPress={nextStep}
+        haptic
         style={styles.continueButton}
       />
     </View>
@@ -380,6 +407,7 @@ export default function OnboardingFlow({
       <Button
         title="Get My Personalized Plan"
         onPress={nextStep}
+        haptic
         style={styles.continueButton}
       />
     </View>
@@ -407,19 +435,21 @@ export default function OnboardingFlow({
         <Button
           title="Enable Notifications"
           onPress={nextStep}
+          haptic
           style={styles.continueButton}
         />
         <Button
           title="Skip for now"
           variant="text"
           onPress={nextStep}
+          haptic
         />
       </View>
     </View>
   );
 
   const renderAccountCreation = () => (
-    <View style={styles.stepContent}>
+    <View style={[styles.stepContent, { justifyContent: 'flex-start', paddingTop: 8 }]}>
       <Text style={styles.stepTitle}>Ready to get started?</Text>
       <Text style={styles.stepSubtitle}>
         Your personalized growth plan is ready. Create an account to save your progress and access all features.
@@ -429,13 +459,37 @@ export default function OnboardingFlow({
         <Button
           title="Create Account"
           onPress={() => onAuthRequired()}
+          haptic
           style={styles.continueButton}
         />
-        <Button
-          title="Continue as Guest"
-          variant="text"
-          onPress={nextStep}
-        />
+      </View>
+
+      <View style={styles.socialDivider}>
+        <Text style={styles.socialDividerText}>or continue with</Text>
+      </View>
+
+      <View style={styles.socialRow}>
+        <TouchableOpacity
+          style={styles.socialButton}
+          onPress={() => onAuthRequired()}
+          activeOpacity={0.8}
+        >
+          <FontAwesome name="google" size={22} color="#DB4437" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.socialButton}
+          onPress={() => onAuthRequired()}
+          activeOpacity={0.8}
+        >
+          <FontAwesome name="apple" size={22} color="#000000" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.socialButton}
+          onPress={() => onAuthRequired()}
+          activeOpacity={0.8}
+        >
+          <FontAwesome name="facebook-square" size={22} color="#1877F2" />
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -446,6 +500,34 @@ export default function OnboardingFlow({
       <Text style={styles.stepSubtitle}>
         Unlock your full height potential with our premium features
       </Text>
+
+      {/* Premium Features List */}
+      <View style={styles.premiumFeaturesContainer}>
+        <View style={styles.featureItem}>
+          <Text style={styles.featureIcon}>🎯</Text>
+          <Text style={styles.featureText}>AI-powered height predictions</Text>
+        </View>
+        <View style={styles.featureItem}>
+          <Text style={styles.featureIcon}>📊</Text>
+          <Text style={styles.featureText}>Advanced progress analytics</Text>
+        </View>
+        <View style={styles.featureItem}>
+          <Text style={styles.featureIcon}>🏃‍♂️</Text>
+          <Text style={styles.featureText}>Personalized exercise plans</Text>
+        </View>
+        <View style={styles.featureItem}>
+          <Text style={styles.featureIcon}>🍎</Text>
+          <Text style={styles.featureText}>Custom nutrition guidance</Text>
+        </View>
+        <View style={styles.featureItem}>
+          <Text style={styles.featureIcon}>👨‍⚕️</Text>
+          <Text style={styles.featureText}>24/7 expert support</Text>
+        </View>
+        <View style={styles.featureItem}>
+          <Text style={styles.featureIcon}>🚫</Text>
+          <Text style={styles.featureText}>Ad-free experience</Text>
+        </View>
+      </View>
 
       <View style={styles.plansContainer}>
         <View style={[styles.planCard, styles.popularPlan]}>
@@ -461,9 +543,14 @@ export default function OnboardingFlow({
           <Text style={styles.planOriginalPrice}>
             Usually {SUBSCRIPTION_PLANS.ANNUAL.currency}{SUBSCRIPTION_PLANS.ANNUAL.originalPrice}
           </Text>
+          <View style={styles.planFeatures}>
+            {SUBSCRIPTION_PLANS.ANNUAL.features.map((feature, index) => (
+              <Text key={`annual-${index}`} style={styles.planFeatureText}>✓ {feature}</Text>
+            ))}
+          </View>
         </View>
 
-        <View style={styles.planCard}>
+        <TouchableOpacity style={styles.planCard} onPress={nextStep}>
           <Text style={styles.planName}>{SUBSCRIPTION_PLANS.MONTHLY.name}</Text>
           <View style={styles.planPricing}>
             <Text style={styles.planPrice}>
@@ -471,16 +558,38 @@ export default function OnboardingFlow({
             </Text>
             <Text style={styles.planPeriod}>/{SUBSCRIPTION_PLANS.MONTHLY.period}</Text>
           </View>
-        </View>
+          <View style={styles.planFeatures}>
+            {SUBSCRIPTION_PLANS.MONTHLY.features.slice(0, 4).map((feature, index) => (
+              <Text key={`monthly-${index}`} style={styles.planFeatureText}>✓ {feature}</Text>
+            ))}
+            <Text key="monthly-more" style={styles.planFeatureText}>+ More features</Text>
+          </View>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.trialNotice}>
-        <Text style={styles.trialText}>3-day free trial • Cancel anytime</Text>
+        <Text style={styles.trialText}>🎉 7-day free trial • Cancel anytime • No commitment</Text>
+      </View>
+
+      <View style={styles.trustIndicators}>
+        <View style={styles.trustItem}>
+          <Text style={styles.trustIcon}>🔒</Text>
+          <Text style={styles.trustText}>Secure payment</Text>
+        </View>
+        <View style={styles.trustItem}>
+          <Text style={styles.trustIcon}>⭐</Text>
+          <Text style={styles.trustText}>4.9/5 rating</Text>
+        </View>
+        <View style={styles.trustItem}>
+          <Text style={styles.trustIcon}>👥</Text>
+          <Text style={styles.trustText}>50k+ users</Text>
+        </View>
       </View>
 
       <Button
-        title="Start Free Trial"
+        title="Start Free Trial - $0 for 7 days"
         onPress={nextStep}
+        haptic
         style={styles.continueButton}
       />
 
@@ -488,7 +597,14 @@ export default function OnboardingFlow({
         title="Continue with Free Version"
         variant="text"
         onPress={nextStep}
+        haptic
+        style={styles.freeVersionButton}
       />
+
+      <Text style={styles.termsText}>
+        By continuing, you agree to our Terms of Service and Privacy Policy.
+        Subscription auto-renews unless cancelled.
+      </Text>
     </View>
   );
 
@@ -510,6 +626,7 @@ export default function OnboardingFlow({
       <Button
         title="Go to Dashboard"
         onPress={handleComplete}
+        haptic
         style={styles.continueButton}
         loading={loading}
       />
@@ -604,7 +721,7 @@ const styles = StyleSheet.create({
   },
   stepContent: {
     alignItems: 'center',
-    minHeight: height - 200,
+    paddingBottom: 40,
   },
   stepTitle: {
     fontSize: 28,
@@ -623,7 +740,7 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     width: '100%',
-    marginTop: 'auto',
+    marginTop: 30,
     marginBottom: 20,
   },
   heightPicker: {
@@ -908,6 +1025,31 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 20,
   },
+  socialDivider: {
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 12,
+  },
+  socialDividerText: {
+    color: COLORS.TEXT_SECONDARY,
+    fontSize: 12,
+  },
+  socialRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  socialButton: {
+    width: 54,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: COLORS.PRIMARY,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#1f1f1f',
+  },
   plansContainer: {
     width: '100%',
     marginBottom: 20,
@@ -973,6 +1115,76 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.TEXT_SECONDARY,
     textAlign: 'center',
+  },
+  // Enhanced paywall styles
+  premiumFeaturesContainer: {
+    marginBottom: 24,
+    backgroundColor: '#1A1F2D',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#2A2F3E',
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  featureIcon: {
+    fontSize: 20,
+    marginRight: 12,
+    width: 24,
+  },
+  featureText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: '#FFFFFF',
+    flex: 1,
+  },
+  planFeatures: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#2A2F3E',
+  },
+  planFeatureText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: '#AAAAAA',
+    marginBottom: 4,
+  },
+  trustIndicators: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 20,
+    paddingVertical: 16,
+    backgroundColor: '#1A1F2D',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#2A2F3E',
+  },
+  trustItem: {
+    alignItems: 'center',
+  },
+  trustIcon: {
+    fontSize: 16,
+    marginBottom: 4,
+  },
+  trustText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: '#AAAAAA',
+  },
+  freeVersionButton: {
+    marginTop: 8,
+  },
+  termsText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 11,
+    color: '#AAAAAA',
+    textAlign: 'center',
+    lineHeight: 16,
+    marginTop: 16,
   },
   completionEmoji: {
     fontSize: 64,

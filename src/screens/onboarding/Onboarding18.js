@@ -39,7 +39,7 @@ const Onboarding18 = ({ navigation }) => {
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.navigate('Dashboard')}
+          onPress={() => navigation.navigate('Auth')}
         >
           <Text style={styles.buttonText}>Get Started</Text>
         </TouchableOpacity>

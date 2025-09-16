@@ -1,104 +1,79 @@
-// Onboarding17.js (Page 17 - Create account)
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, TextInput, ScrollView } from 'react-native';
+// Onboarding17.js (Page 17 - Account Creation)
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-const Onboarding17 = ({ navigation }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [acceptTerms, setAcceptTerms] = useState(false);
+const Onboarding17 = ({ navigation, data, updateData, onAuthRequired }) => {
+  const handleCreateAccount = () => {
+    // Navigate directly to AuthScreen with onboarding data
+    onAuthRequired(data);
+  };
 
-  const isFormValid = email && password && confirmPassword && acceptTerms && password === confirmPassword;
+  const handleSignIn = () => {
+    // Navigate directly to AuthScreen with onboarding data
+    onAuthRequired(data);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.contentContainer}>
-          <Text style={styles.title}>Create your account</Text>
-          <Text style={styles.subtitle}>Start your height optimization journey</Text>
+      <View style={styles.contentContainer}>
+        <Text style={styles.title}>Create Your Account</Text>
+        <Text style={styles.subtitle}>
+          Save your progress and access your personalized height growth plan
+        </Text>
 
-          <View style={styles.formContainer}>
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Email</Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Enter your email"
-                placeholderTextColor="#AAAAAA"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Password</Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Create a password"
-                placeholderTextColor="#AAAAAA"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Confirm Password</Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Confirm your password"
-                placeholderTextColor="#AAAAAA"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry
-              />
-            </View>
-
-            <TouchableOpacity
-              style={styles.termsContainer}
-              onPress={() => setAcceptTerms(!acceptTerms)}
-            >
-              <View style={[
-                styles.checkbox,
-                acceptTerms && styles.checkboxChecked
-              ]}>
-                {acceptTerms && <Text style={styles.checkmark}>✓</Text>}
-              </View>
-              <Text style={styles.termsText}>
-                I accept the Terms of Service and Privacy Policy
-              </Text>
-            </TouchableOpacity>
+        <View style={styles.benefitsContainer}>
+          <Text style={styles.benefitsTitle}>What you'll get:</Text>
+          <View style={styles.benefitItem}>
+            <Text style={styles.benefitText}>✓ Personalized growth plan</Text>
           </View>
-
-          <View style={styles.dividerContainer}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
+          <View style={styles.benefitItem}>
+            <Text style={styles.benefitText}>✓ Progress tracking</Text>
           </View>
-
-          <View style={styles.socialButtonsContainer}>
-            <TouchableOpacity style={styles.socialButton}>
-              <Text style={styles.socialButtonText}>Continue with Google</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.socialButton}>
-              <Text style={styles.socialButtonText}>Continue with Apple</Text>
-            </TouchableOpacity>
+          <View style={styles.benefitItem}>
+            <Text style={styles.benefitText}>✓ AI-powered insights</Text>
+          </View>
+          <View style={styles.benefitItem}>
+            <Text style={styles.benefitText}>✓ Expert guidance</Text>
+          </View>
+          <View style={styles.benefitItem}>
+            <Text style={styles.benefitText}>✓ Community support</Text>
+          </View>
+          <View style={styles.benefitItem}>
+            <Text style={styles.benefitText}>✓ Premium features</Text>
           </View>
         </View>
-      </ScrollView>
+
+        <View style={styles.dataPreview}>
+          <Text style={styles.dataPreviewTitle}>Your Profile Summary:</Text>
+          <Text style={styles.dataPreviewText}>
+            {data.gender && `Gender: ${data.gender}`}
+            {data.currentHeight && ` • Height: ${data.currentHeight}`}
+            {data.targetHeight && ` • Goal: ${data.targetHeight}`}
+            {data.motivation && ` • Motivation: ${data.motivation}`}
+          </Text>
+        </View>
+      </View>
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity
-          style={[
-            styles.button,
-            !isFormValid && styles.buttonDisabled
-          ]}
-          disabled={!isFormValid}
-          onPress={() => navigation.navigate('Onboarding18')}
+          style={styles.button}
+          onPress={handleCreateAccount}
         >
           <Text style={styles.buttonText}>Create Account</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.signInButton} onPress={handleSignIn}>
+          <Text style={styles.signInText}>
+            Already have an account? <Text style={styles.signInLink}>Sign In</Text>
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.skipButton}
+          onPress={() => navigation.navigate('Onboarding18')}
+        >
+          <Text style={styles.skipText}>Continue as Guest</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -108,29 +83,28 @@ const Onboarding17 = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0F1D', // Deep navy base
-  },
-  scrollView: {
-    flex: 1,
+    backgroundColor: '#000000',
   },
   contentContainer: {
+    flex: 1,
     padding: 24,
-    paddingBottom: 120,
+    paddingTop: 40,
   },
   title: {
-    fontFamily: 'Playfair Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 28,
     color: '#FFFFFF',
-    marginBottom: 8,
-    letterSpacing: -0.5,
     textAlign: 'center',
+    marginBottom: 12,
+    letterSpacing: -0.5,
   },
   subtitle: {
     fontFamily: 'Inter-Regular',
     fontSize: 16,
-    color: '#AAAAAA',
-    marginBottom: 32,
+    color: '#9CA3AF',
     textAlign: 'center',
+    marginBottom: 40,
+    lineHeight: 24,
   },
   formContainer: {
     marginBottom: 32,
@@ -139,110 +113,111 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   inputLabel: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: '#1A1F2D',
+    borderWidth: 1,
+    borderColor: '#2A2F3E',
+    borderRadius: 8,
+    padding: 16,
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontFamily: 'Inter-Regular',
+  },
+  benefitsContainer: {
+    backgroundColor: '#0a0a0a',
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#1f1f1f',
+  },
+  benefitsTitle: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 16,
+    color: '#FFFFFF',
+    marginBottom: 12,
+  },
+  benefitItem: {
+    marginBottom: 8,
+  },
+  benefitText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: '#9CA3AF',
+  },
+  dataPreview: {
+    backgroundColor: '#0a0a0a',
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#1f1f1f',
+    marginTop: 20,
+  },
+  dataPreviewTitle: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 16,
     color: '#FFFFFF',
     marginBottom: 8,
   },
-  textInput: {
-    borderWidth: 1,
-    borderColor: '#D9D9D9',
-    borderRadius: 8,
-    padding: 16,
-    fontFamily: 'Inter-Regular',
-    fontSize: 16,
-    color: '#FFFFFF',
-    backgroundColor: '#1A1F2D',
-  },
-  termsContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginTop: 8,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderWidth: 1,
-    borderColor: '#D9D9D9',
-    borderRadius: 4,
-    marginRight: 12,
-    marginTop: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkboxChecked: {
-    backgroundColor: '#3B5FE3',
-    borderColor: '#3B5FE3',
-  },
-  checkmark: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  termsText: {
+  dataPreviewText: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#AAAAAA',
-    flex: 1,
+    color: '#9CA3AF',
     lineHeight: 20,
   },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#2A2F3E',
-  },
-  dividerText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: '#AAAAAA',
-    paddingHorizontal: 16,
-  },
-  socialButtonsContainer: {
-    marginBottom: 24,
-  },
-  socialButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#D9D9D9',
-    borderRadius: 8,
-    paddingVertical: 16,
-    marginBottom: 16,
-  },
-  socialButtonText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 16,
-    color: '#FFFFFF',
-  },
   buttonContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#0A0F1D',
     padding: 24,
     borderTopWidth: 1,
-    borderTopColor: '#2A2F3E',
+    borderTopColor: '#1f1f1f',
   },
   button: {
-    backgroundColor: '#3B5FE3',
-    paddingVertical: 16,
-    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#1f1f1f',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
   },
   buttonDisabled: {
-    backgroundColor: '#2A2F3E',
+    backgroundColor: '#1f1f1f',
+    borderColor: '#0a0a0a',
   },
   buttonText: {
     fontFamily: 'Inter-SemiBold',
-    fontSize: 18,
-    color: '#FFFFFF',
+    fontSize: 16,
+    color: '#000000',
+  },
+  signInButton: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  signInText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: '#9CA3AF',
+  },
+  signInLink: {
+    color: '#9CA3AF',
+    fontFamily: 'Inter-Medium',
+  },
+  skipButton: {
+    alignItems: 'center',
+  },
+  skipText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: '#9CA3AF',
+    textDecorationLine: 'underline',
   },
 });
 

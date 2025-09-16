@@ -1,6 +1,7 @@
 // Onboarding13.js (Page 13 - Pain)
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const Onboarding13 = ({ navigation }) => {
   return (
@@ -18,33 +19,44 @@ const Onboarding13 = ({ navigation }) => {
 
           <View style={styles.factsList}>
             <View style={styles.factItem}>
+              <View style={styles.factIcon}>
+                <Text style={styles.factIconText}>!</Text>
+              </View>
               <Text style={styles.factText}>Women prefer tall men</Text>
             </View>
 
             <View style={styles.factItem}>
+              <View style={styles.factIcon}>
+                <Text style={styles.factIconText}>!</Text>
+              </View>
               <Text style={styles.factText}>Lower pay and respect</Text>
             </View>
 
             <View style={styles.factItem}>
+              <View style={styles.factIcon}>
+                <Text style={styles.factIconText}>!</Text>
+              </View>
               <Text style={styles.factText}>Each inch adds $700/year</Text>
             </View>
 
             <View style={styles.factItem}>
+              <View style={styles.factIcon}>
+                <Text style={styles.factIconText}>!</Text>
+              </View>
               <Text style={styles.factText}>58% of CEOs are 6ft+</Text>
             </View>
 
             <View style={styles.factItem}>
+              <View style={styles.factIcon}>
+                <Text style={styles.factIconText}>!</Text>
+              </View>
               <Text style={styles.factText}>Harder to fit in</Text>
             </View>
           </View>
 
           <Text style={styles.description}>
-            Height has a significant impact on social perception and career advancement. Studies show that taller individuals often receive higher salaries and more leadership opportunities.
+            The right habits can unlock hidden growth potential.
           </Text>
-
-          <View style={styles.methodContainer}>
-            <Text style={styles.methodLink}>View sources</Text>
-          </View>
         </View>
       </ScrollView>
 
@@ -63,31 +75,31 @@ const Onboarding13 = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0F1D', // Deep navy base
-    paddingTop: 16,
+    backgroundColor: '#000000',
   },
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 24,
+    paddingTop: 4,
     marginBottom: 24,
   },
   progressBar: {
     flex: 1,
     height: 4,
-    backgroundColor: '#2A2F3E', // Darker gray
+    backgroundColor: '#1f1f1f',
     borderRadius: 2,
     marginRight: 12,
   },
   progressFill: {
     height: 4,
-    backgroundColor: '#3B5FE3', // Cobalt accent
+    backgroundColor: '#FFFFFF',
     borderRadius: 2,
   },
   progressText: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#AAAAAA',
+    color: '#9CA3AF',
   },
   scrollView: {
     flex: 1,
@@ -97,11 +109,11 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   title: {
-    fontFamily: 'Playfair Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 28,
     color: '#FFFFFF',
-    marginBottom: 32,
-    letterSpacing: -0.5, // Tighter letter-spacing for headlines
+    marginBottom: 24,
+    letterSpacing: -0.5,
   },
   factsList: {
     marginBottom: 32,
@@ -111,13 +123,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#2A2F3E', // Darker gray
+    borderBottomColor: '#1f1f1f',
+  },
+  factIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  factIconText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 12,
+    color: '#000000',
   },
   factText: {
     fontFamily: 'Inter-Medium',
     fontSize: 16,
     color: '#FFFFFF',
     lineHeight: 24,
+    flex: 1,
   },
   description: {
     fontFamily: 'Inter-Regular',
@@ -132,21 +159,28 @@ const styles = StyleSheet.create({
   methodLink: {
     fontFamily: 'Inter-Medium',
     fontSize: 16,
-    color: '#3B5FE3', // Cobalt accent
+    color: '#9CA3AF',
   },
   buttonContainer: {
     padding: 24,
   },
   button: {
-    backgroundColor: '#3B5FE3', // Cobalt accent
-    paddingVertical: 16,
-    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1f1f1f',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
   },
   buttonText: {
     fontFamily: 'Inter-SemiBold',
-    fontSize: 18,
-    color: '#FFFFFF',
+    fontSize: 16,
+    color: '#000000',
   },
 });
 

@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
+import * as Haptics from 'expo-haptics';
+import AICoachIcon from '../components/AI/AICoachIcon';
 
 // Import main app screens
 import HomeScreen from './HomeScreen';
 import ExercisesScreen from './ExercisesScreen';
-import ProgressScreen from './ProgressScreen';
-import ProfileScreen from './ProfileScreen';
+import TribeScreen from './TribeScreen';
+import PersonalProfileScreen from './PersonalProfileScreen';
 import DailyRoutineScreen from './DailyRoutineScreen';
 import FoodScanner from '../components/Nutrition/FoodScanner';
 
@@ -15,6 +17,16 @@ export default function MainApp({ onLogout }) {
   const [currentTab, setCurrentTab] = useState('home');
   const [currentScreen, setCurrentScreen] = useState(null);
   const insets = useSafeAreaInsets();
+
+  const navigateToProfile = () => {
+    setCurrentScreen('profile');
+  };
+
+  const handleTabPress = (tabId) => {
+    // Add haptic feedback when switching tabs
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setCurrentTab(tabId);
+  };
 
   const renderCurrentScreen = () => {
     // Handle overlay screens first
@@ -30,36 +42,49 @@ export default function MainApp({ onLogout }) {
       );
     }
 
+    if (currentScreen === 'profile') {
+      return (
+        <PersonalProfileScreen
+          navigation={{ goBack: () => setCurrentScreen(null) }}
+          onLogout={onLogout}
+        />
+      );
+    }
+
     // Handle main tab screens
     switch (currentTab) {
       case 'home':
         return (
           <HomeScreen
-            onNavigateToProgress={() => setCurrentTab('progress')}
-            onNavigateToProfile={() => setCurrentTab('profile')}
+            onNavigateToProfile={navigateToProfile}
+            onNavigateToProgress={() => setCurrentTab('daily')}
           />
         );
       case 'exercises':
         return (
           <ExercisesScreen
             navigation={{
-              navigate: (screen) => setCurrentScreen(screen),
-              goBack: () => setCurrentScreen(null)
+              navigate: (screen) => {
+                if (screen === 'home') {
+                  setCurrentTab('home');
+                } else {
+                  setCurrentScreen(screen);
+                }
+              },
+              goBack: () => setCurrentTab('home')
             }}
-            onNavigateToProfile={() => setCurrentTab('profile')}
+            onNavigateToProfile={navigateToProfile}
           />
         );
-      case 'progress':
-        return <ProgressScreen />;
       case 'daily':
-        return <DailyRoutineScreen />;
-      case 'profile':
-        return <ProfileScreen />;
+        return <DailyRoutineScreen onNavigateToProfile={navigateToProfile} />;
+      case 'tribe':
+        return <TribeScreen navigation={{ goBack: () => setCurrentTab('home') }} onNavigateToProfile={navigateToProfile} />;
       default:
         return (
           <HomeScreen
-            onNavigateToProgress={() => setCurrentTab('progress')}
-            onNavigateToProfile={() => setCurrentTab('profile')}
+            onNavigateToProfile={navigateToProfile}
+            onNavigateToProgress={() => setCurrentTab('daily')}
           />
         );
     }
@@ -68,9 +93,8 @@ export default function MainApp({ onLogout }) {
   const tabs = [
     { id: 'home', label: 'Me', icon: 'home' },
     { id: 'exercises', label: 'Hub', icon: 'barbell' },
-    { id: 'progress', label: 'Progress', icon: 'stats-chart' },
     { id: 'daily', label: 'Today', icon: 'calendar' },
-    { id: 'profile', label: 'Tribe', icon: 'people' },
+    { id: 'tribe', label: 'Tribe', icon: 'people' },
   ];
 
   return (
@@ -87,7 +111,7 @@ export default function MainApp({ onLogout }) {
             <TouchableOpacity
               key={tab.id}
               style={styles.tab}
-              onPress={() => setCurrentTab(tab.id)}
+              onPress={() => handleTabPress(tab.id)}
             >
               <Icon
                 name={tab.icon}
@@ -104,6 +128,17 @@ export default function MainApp({ onLogout }) {
               </Text>
             </TouchableOpacity>
           ))}
+
+          {/* AI Coach Icon - Hide on home page */}
+          {currentTab !== 'home' && (
+            <View style={styles.aiCoachContainer}>
+              <AICoachIcon
+                size={28}
+                color="#000000"
+                style={styles.aiCoachIcon}
+              />
+            </View>
+          )}
         </View>
       )}
     </View>
@@ -126,6 +161,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#E5E5E5',
     paddingHorizontal: 12,
     paddingVertical: 8,
+    position: 'relative',
   },
   tab: {
     flex: 1,
@@ -140,5 +176,29 @@ const styles = StyleSheet.create({
   },
   tabLabelActive: {
     color: '#000000',
+  },
+  aiCoachContainer: {
+    position: 'absolute',
+    top: -65,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 3,
+    borderColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  aiCoachIcon: {
+    padding: 0,
   },
 });

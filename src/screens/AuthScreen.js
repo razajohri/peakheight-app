@@ -10,104 +10,31 @@ import {
   Platform,
   ScrollView
 } from 'react-native';
-import Voice from '@react-native-voice/voice';
+import * as Haptics from 'expo-haptics';
+import { FontAwesome } from '@expo/vector-icons';
 
 import Button from '../components/UI/Button';
-// import { AuthService } from '../services/auth';
+import { AuthService } from '../services/auth';
 import { COLORS, APP_CONFIG } from '../utils/constants';
 
-export default function AuthScreen({ onSuccess, onBack }) {
-  const [mode, setMode] = useState('signin'); // 'signin' or 'signup'
+export default function AuthScreen({ onSuccess, onBack, onboardingData }) {
+  console.log('🔐 AuthScreen received onboardingData:', onboardingData);
+  console.log('🔐 AuthScreen onboardingData keys:', Object.keys(onboardingData || {}));
+  const [mode, setMode] = useState('signup'); // 'signin' or 'signup'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // AI-powered features state
-  const [isListening, setIsListening] = useState(false);
-  const [voiceInputField, setVoiceInputField] = useState(null); // 'email' or 'password'
+  // Password feedback state
   const [passwordFeedback, setPasswordFeedback] = useState({ strength: 'empty', message: 'Enter a password' });
-  const [emailSuggestions, setEmailSuggestions] = useState([]);
-  const [showEmailSuggestions, setShowEmailSuggestions] = useState(false);
 
-  // const authService = new AuthService();
+  // AuthService is imported as a class with static methods
 
-  // Voice recognition setup
-  useEffect(() => {
-    Voice.onSpeechStart = () => setIsListening(true);
-    Voice.onSpeechEnd = () => setIsListening(false);
-    Voice.onSpeechResults = (e) => {
-      if (e.value && e.value.length > 0) {
-        const spokenText = e.value[0].toLowerCase().replace(/\s+/g, '');
-        if (voiceInputField === 'email') {
-          setEmail(spokenText);
-        } else if (voiceInputField === 'password') {
-          setPassword(spokenText);
-        }
-      }
-    };
 
-    return () => {
-      Voice.destroy().then(Voice.removeAllListeners);
-    };
-  }, [voiceInputField]);
 
-  // AI-powered email suggestions
-  const fetchEmailSuggestion = async (nameHint = "User") => {
-    try {
-      // For demo purposes, we'll use mock suggestions since we don't have OpenAI API key
-      const mockSuggestions = [
-        `${nameHint.toLowerCase().replace(/\s+/g, '')}@gmail.com`,
-        `${nameHint.toLowerCase().replace(/\s+/g, '')}@outlook.com`,
-        `${nameHint.toLowerCase().replace(/\s+/g, '')}@yahoo.com`,
-        `${nameHint.toLowerCase().replace(/\s+/g, '')}@peakheight.com`
-      ];
-
-      setEmailSuggestions(mockSuggestions);
-      setShowEmailSuggestions(true);
-
-      // In a real app, you would use OpenAI API:
-      /*
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${YOUR_OPENAI_API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: "gpt-4",
-          messages: [
-            {
-              role: "system",
-              content: "You are a helpful assistant that suggests professional email addresses based on names. Respond with just the email, no explanations."
-            },
-            {
-              role: "user",
-              content: `Suggest a professional email for someone named ${nameHint}`
-            }
-          ],
-          max_tokens: 60
-        })
-      });
-      const data = await response.json();
-      return data.choices[0].message.content;
-      */
-    } catch (error) {
-      console.error("Error fetching email suggestion:", error);
-      return null;
-    }
-  };
-
-  // Voice input functions
-  const startListening = (field) => {
-    setVoiceInputField(field);
-    Voice.start('en-US');
-  };
-
-  const stopListening = () => {
-    Voice.stop();
-    setIsListening(false);
-  };
 
   // Intelligent password strength checker
   const checkPasswordStrength = (password) => {
@@ -154,9 +81,16 @@ export default function AuthScreen({ onSuccess, onBack }) {
       return;
     }
 
-    if (mode === 'signup' && password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
-      return;
+    if (mode === 'signup') {
+      if (!firstName || !lastName) {
+        Alert.alert('Error', 'Please enter your first and last name');
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        Alert.alert('Error', 'Passwords do not match');
+        return;
+      }
     }
 
     if (password.length < 6) {
@@ -166,16 +100,41 @@ export default function AuthScreen({ onSuccess, onBack }) {
 
     setLoading(true);
     try {
-      // For demo purposes, simulate authentication
-      setTimeout(() => {
-        const mockUser = {
-          id: '123',
-          email: email,
-          created_at: new Date().toISOString()
+      let result;
+
+      if (mode === 'signup') {
+        // Sign up new user with name data
+        const userData = {
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          displayName: `${firstName.trim()} ${lastName.trim()}`
         };
-        onSuccess(mockUser);
+        result = await AuthService.signUp(email, password, userData);
+      } else {
+        // Sign in existing user
+        result = await AuthService.signIn(email, password);
+      }
+
+      if (result.error) {
+        Alert.alert('Authentication Failed', result.error);
         setLoading(false);
-      }, 1000);
+        return;
+      }
+
+      // Get user profile
+      const { profile, error: profileError } = await AuthService.getUserProfile(result.data.user.id);
+
+      if (profileError) {
+        console.error('Profile error:', profileError);
+        // Still proceed with auth user if profile fetch fails
+        console.log('🔐 Calling onSuccess with user and onboardingData:', result.data.user.id, onboardingData);
+        onSuccess(result.data.user, onboardingData);
+      } else {
+        console.log('🔐 Calling onSuccess with profile and onboardingData:', (profile || result.data.user).id, onboardingData);
+        onSuccess(profile || result.data.user, onboardingData);
+      }
+
+      setLoading(false);
     } catch (error) {
       console.error('Auth error:', error);
       Alert.alert(
@@ -189,17 +148,26 @@ export default function AuthScreen({ onSuccess, onBack }) {
   const handleSocialAuth = async (provider) => {
     setLoading(true);
     try {
-      // For demo purposes, simulate social authentication
-      setTimeout(() => {
-        const mockUser = {
-          id: '123',
-          email: `user@${provider}.com`,
-          created_at: new Date().toISOString(),
-          provider: provider
-        };
-        onSuccess(mockUser);
+      let result;
+
+      if (provider === 'google') {
+        result = await AuthService.signInWithGoogle();
+      } else if (provider === 'apple') {
+        result = await AuthService.signInWithApple();
+      } else {
+        Alert.alert('Unsupported Provider', `${provider} authentication is not supported yet.`);
         setLoading(false);
-      }, 1000);
+        return;
+      }
+
+      if (result.error) {
+        Alert.alert('Authentication Failed', result.error);
+        setLoading(false);
+        return;
+      }
+
+      // The auth state change listener in App.js will handle the rest
+      setLoading(false);
     } catch (error) {
       console.error('Social auth error:', error);
       Alert.alert(
@@ -216,11 +184,22 @@ export default function AuthScreen({ onSuccess, onBack }) {
       return;
     }
 
-    // For demo purposes, simulate password reset
-    Alert.alert(
-      'Password Reset',
-      'Check your email for password reset instructions'
-    );
+    try {
+      const { error } = await AuthService.resetPassword(email);
+
+      if (error) {
+        Alert.alert('Error', error);
+        return;
+      }
+
+      Alert.alert(
+        'Password Reset',
+        'Check your email for password reset instructions'
+      );
+    } catch (error) {
+      console.error('Password reset error:', error);
+      Alert.alert('Error', 'Failed to send password reset email. Please try again.');
+    }
   };
 
   return (
@@ -232,12 +211,9 @@ export default function AuthScreen({ onSuccess, onBack }) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backButtonText}>←</Text>
-        </TouchableOpacity>
+
 
         <View style={styles.header}>
-          <Text style={styles.logo}>{APP_CONFIG.NAME}</Text>
           <Text style={styles.title}>
             {mode === 'signin' ? 'Welcome back!' : 'Create your account'}
           </Text>
@@ -252,27 +228,32 @@ export default function AuthScreen({ onSuccess, onBack }) {
         <View style={styles.authForm}>
           {/* Social Auth Buttons */}
           <View style={styles.socialButtons}>
-            <Button
-              title="Continue with Google"
-              onPress={() => handleSocialAuth('google')}
-              style={[styles.socialButton, styles.googleButton]}
-              textStyle={styles.socialButtonText}
-              loading={loading}
-            />
-            <Button
-              title="Continue with Apple"
-              onPress={() => handleSocialAuth('apple')}
-              style={[styles.socialButton, styles.appleButton]}
-              textStyle={styles.socialButtonText}
-              loading={loading}
-            />
-            <Button
-              title="Continue with Facebook"
-              onPress={() => handleSocialAuth('facebook')}
-              style={[styles.socialButton, styles.facebookButton]}
-              textStyle={styles.socialButtonText}
-              loading={loading}
-            />
+            <TouchableOpacity
+              style={[styles.socialRowButton, styles.googleRow]}
+              activeOpacity={0.9}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleSocialAuth('google'); }}
+            >
+              <Text style={styles.socialRowText}>Continue with Google</Text>
+              <FontAwesome name="google" size={20} color="#DB4437" style={styles.socialIconRight} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.socialRowButton, styles.appleRow]}
+              activeOpacity={0.9}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleSocialAuth('apple'); }}
+            >
+              <Text style={styles.socialRowText}>Continue with Apple</Text>
+              <FontAwesome name="apple" size={20} color="#FFFFFF" style={styles.socialIconRight} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.socialRowButton, styles.facebookRow]}
+              activeOpacity={0.9}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); /* TODO: implement Facebook */ }}
+            >
+              <Text style={styles.socialRowText}>Continue with Facebook</Text>
+              <FontAwesome name="facebook-square" size={20} color="#1877F2" style={styles.socialIconRight} />
+            </TouchableOpacity>
           </View>
 
           <View style={styles.divider}>
@@ -283,84 +264,68 @@ export default function AuthScreen({ onSuccess, onBack }) {
 
           {/* Email Auth Form */}
           <View style={styles.emailForm}>
-            {/* Email Input with Voice and AI Suggestions */}
+            {/* Email Input */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Email Address</Text>
-              <View style={styles.inputRow}>
-                <TextInput
-                  style={[styles.input, styles.flexGrow]}
-                  placeholder="Enter your email"
-                  placeholderTextColor={COLORS.TEXT_SECONDARY}
-                  value={email}
-                  onChangeText={(text) => {
-                    setEmail(text);
-                    setShowEmailSuggestions(false);
-                  }}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                <TouchableOpacity
-                  onPress={() => startListening('email')}
-                  style={styles.micButton}
-                >
-                  <Text style={styles.micIcon}>
-                    {isListening && voiceInputField === 'email' ? '🔴' : '🎤'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Email Suggestions */}
-              <TouchableOpacity
-                style={styles.suggestButton}
-                onPress={() => fetchEmailSuggestion("User")}
-              >
-                <Text style={styles.suggestButtonText}>🤖 Suggest Email</Text>
-              </TouchableOpacity>
-
-              {showEmailSuggestions && (
-                <View style={styles.suggestionsContainer}>
-                  {emailSuggestions.map((suggestion, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      style={styles.suggestionItem}
-                      onPress={() => {
-                        setEmail(suggestion);
-                        setShowEmailSuggestions(false);
-                      }}
-                    >
-                      <Text style={styles.suggestionText}>{suggestion}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your email"
+                placeholderTextColor="#9CA3AF"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
             </View>
 
-            {/* Password Input with Voice and Strength Feedback */}
+            {/* Name Fields - Only show during signup */}
+            {mode === 'signup' && (
+              <>
+                <View style={styles.nameRow}>
+                  <View style={[styles.inputGroup, { flex: 1 }, styles.nameInput]}>
+                    <Text style={styles.inputLabel}>First Name</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter your first name"
+                      placeholderTextColor="#9CA3AF"
+                      value={firstName}
+                      onChangeText={setFirstName}
+                      autoCapitalize="words"
+                      autoCorrect={false}
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1 }, styles.nameInput]}>
+                    <Text style={styles.inputLabel}>Last Name</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter your last name"
+                      placeholderTextColor="#9CA3AF"
+                      value={lastName}
+                      onChangeText={setLastName}
+                      autoCapitalize="words"
+                      autoCorrect={false}
+                    />
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* Password Input with Strength Feedback */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Password</Text>
-              <View style={styles.inputRow}>
-                <TextInput
-                  style={[styles.input, styles.flexGrow]}
-                  placeholder="Enter your password"
-                  placeholderTextColor={COLORS.TEXT_SECONDARY}
-                  value={password}
-                  onChangeText={(text) => {
-                    setPassword(text);
-                    setPasswordFeedback(checkPasswordStrength(text));
-                  }}
-                  secureTextEntry
-                  autoCapitalize="none"
-                />
-                <TouchableOpacity
-                  onPress={() => startListening('password')}
-                  style={styles.micButton}
-                >
-                  <Text style={styles.micIcon}>
-                    {isListening && voiceInputField === 'password' ? '🔴' : '🎤'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your password"
+                placeholderTextColor="#9CA3AF"
+                value={password}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  setPasswordFeedback(checkPasswordStrength(text));
+                }}
+                secureTextEntry
+                autoCapitalize="none"
+              />
 
               {/* Password Strength Feedback */}
               <Text style={[
@@ -375,15 +340,18 @@ export default function AuthScreen({ onSuccess, onBack }) {
             </View>
 
             {mode === 'signup' && (
-              <TextInput
-                style={styles.input}
-                placeholder="Confirm password"
-                placeholderTextColor={COLORS.TEXT_SECONDARY}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry
-                autoCapitalize="none"
-              />
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Confirm Password</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Confirm your password"
+                  placeholderTextColor="#9CA3AF"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                />
+              </View>
             )}
 
             {mode === 'signin' && (
@@ -436,46 +404,36 @@ export default function AuthScreen({ onSuccess, onBack }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.BACKGROUND,
+    backgroundColor: '#000000',
   },
   scrollContent: {
     flexGrow: 1,
-    padding: 20,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.SURFACE,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  backButtonText: {
-    fontSize: 18,
-    color: COLORS.TEXT_PRIMARY,
-    fontWeight: 'bold',
+    padding: 16,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 12,
+    marginTop: 28,
   },
   logo: {
+    fontFamily: 'Inter-Bold',
     fontSize: 32,
-    fontWeight: 'bold',
-    color: COLORS.PRIMARY,
+    color: '#FFFFFF',
     marginBottom: 20,
+    letterSpacing: 1,
   },
   title: {
+    fontFamily: 'Inter-Bold',
     fontSize: 28,
-    fontWeight: 'bold',
-    color: COLORS.TEXT_PRIMARY,
+    color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 8,
+    letterSpacing: -0.5,
   },
   subtitle: {
+    fontFamily: 'Inter-Regular',
     fontSize: 16,
-    color: COLORS.TEXT_SECONDARY,
+    color: '#9CA3AF',
     textAlign: 'center',
     lineHeight: 24,
   },
@@ -483,27 +441,35 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   socialButtons: {
-    marginBottom: 30,
-    gap: 12,
+    marginBottom: 24,
+    gap: 10,
   },
-  socialButton: {
+  socialRowButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: 12,
-    height: 52,
+    height: 50,
+    borderWidth: 1,
+    borderColor: '#1f1f1f',
+    backgroundColor: '#0a0a0a',
+    paddingHorizontal: 14,
   },
-  googleButton: {
-    backgroundColor: '#4285f4',
+  socialIcon: {
+    marginRight: 10,
+    zIndex: 1,
   },
-  appleButton: {
-    backgroundColor: '#000',
+  socialIconRight: {
+    marginLeft: 10,
   },
-  facebookButton: {
-    backgroundColor: '#1877f2',
+  socialRowText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 15,
+    color: '#FFFFFF',
   },
-  socialButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
+  googleRow: {},
+  appleRow: {},
+  facebookRow: {},
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -512,24 +478,26 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: COLORS.BORDER,
+    backgroundColor: '#1f1f1f',
   },
   dividerText: {
     paddingHorizontal: 16,
+    fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: COLORS.TEXT_SECONDARY,
+    color: '#9CA3AF',
   },
   emailForm: {
     marginBottom: 30,
   },
   input: {
-    backgroundColor: COLORS.SURFACE,
+    backgroundColor: '#0a0a0a',
     borderRadius: 12,
     padding: 16,
+    fontFamily: 'Inter-Regular',
     fontSize: 16,
-    color: COLORS.TEXT_PRIMARY,
+    color: '#FFFFFF',
     borderWidth: 1,
-    borderColor: COLORS.BORDER,
+    borderColor: '#1f1f1f',
     marginBottom: 16,
   },
   forgotPassword: {
@@ -537,12 +505,21 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   forgotPasswordText: {
+    fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: COLORS.PRIMARY,
+    color: '#FFFFFF',
   },
   emailAuthButton: {
     borderRadius: 12,
     height: 52,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#1f1f1f',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
   },
   modeToggle: {
     flexDirection: 'row',
@@ -551,91 +528,47 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   modeToggleText: {
+    fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: COLORS.TEXT_SECONDARY,
+    color: '#9CA3AF',
   },
   modeToggleLink: {
+    fontFamily: 'Inter-SemiBold',
     fontSize: 14,
-    color: COLORS.PRIMARY,
-    fontWeight: '600',
+    color: '#FFFFFF',
   },
   terms: {
+    fontFamily: 'Inter-Regular',
     fontSize: 12,
-    color: COLORS.TEXT_SECONDARY,
+    color: '#9CA3AF',
     textAlign: 'center',
     lineHeight: 18,
   },
   termsLink: {
-    color: COLORS.PRIMARY,
+    color: '#FFFFFF',
   },
   // AI-powered features styles
   inputGroup: {
     marginBottom: 20,
   },
   inputLabel: {
+    fontFamily: 'Inter-SemiBold',
     fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.TEXT_PRIMARY,
+    color: '#FFFFFF',
     marginBottom: 8,
   },
-  inputRow: {
+  nameRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    gap: 12,
+    marginBottom: 20,
   },
-  flexGrow: {
-    flex: 1,
-  },
-  micButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.PRIMARY + '20',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.PRIMARY,
-  },
-  micIcon: {
-    fontSize: 20,
-  },
-  suggestButton: {
-    backgroundColor: COLORS.PRIMARY + '15',
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginTop: 8,
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: COLORS.PRIMARY + '30',
-  },
-  suggestButtonText: {
-    fontSize: 14,
-    color: COLORS.PRIMARY,
-    fontWeight: '500',
-  },
-  suggestionsContainer: {
-    marginTop: 8,
-    backgroundColor: COLORS.SURFACE,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.BORDER,
-    maxHeight: 120,
-  },
-  suggestionItem: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
-  },
-  suggestionText: {
-    fontSize: 14,
-    color: COLORS.TEXT_PRIMARY,
+  nameInput: {
+    marginBottom: 0,
   },
   feedbackText: {
+    fontFamily: 'Inter-Medium',
     fontSize: 12,
     marginTop: 4,
-    fontWeight: '500',
   },
   weakText: {
     color: '#FF3B30',
@@ -647,6 +580,6 @@ const styles = StyleSheet.create({
     color: '#4CD964',
   },
   neutralText: {
-    color: COLORS.TEXT_SECONDARY,
+    color: '#9CA3AF',
   },
 });

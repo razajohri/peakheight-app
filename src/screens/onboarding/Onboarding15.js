@@ -1,6 +1,8 @@
 // Onboarding15.js (Page 15 - Analyze my answers)
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 
 const Onboarding15 = ({ navigation }) => {
   const [analyzing, setAnalyzing] = useState(true);
@@ -15,6 +17,7 @@ const Onboarding15 = ({ navigation }) => {
           clearInterval(interval);
           setTimeout(() => {
             setAnalyzing(false);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           }, 500);
           return 1;
         }
@@ -31,7 +34,7 @@ const Onboarding15 = ({ navigation }) => {
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: '100%' }]} />
         </View>
-        <Text style={styles.progressText}>15/15</Text>
+        <Text style={styles.progressText}>15/16</Text>
       </View>
 
       <View style={styles.contentContainer}>
@@ -40,7 +43,7 @@ const Onboarding15 = ({ navigation }) => {
             <Text style={styles.title}>Analyzing your answers</Text>
 
             <View style={styles.analyzeContainer}>
-              <ActivityIndicator size="large" color="#3B5FE3" />
+              <ActivityIndicator size="large" color="#FFFFFF" />
               <Text style={styles.analyzeText}>
                 Our algorithm is analyzing your data to create your personalized height optimization plan
               </Text>
@@ -73,7 +76,10 @@ const Onboarding15 = ({ navigation }) => {
             analyzing && styles.buttonDisabled
           ]}
           disabled={analyzing}
-          onPress={() => navigation.navigate('Onboarding16')}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            navigation.navigate('Onboarding17');
+          }}
         >
           <Text style={styles.buttonText}>Continue</Text>
         </TouchableOpacity>
@@ -85,31 +91,31 @@ const Onboarding15 = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0F1D', // Deep navy base
-    paddingTop: 16,
+    backgroundColor: '#000000',
   },
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 24,
+    paddingTop: 4,
     marginBottom: 24,
   },
   progressBar: {
     flex: 1,
     height: 4,
-    backgroundColor: '#2A2F3E', // Darker gray
+    backgroundColor: '#1f1f1f',
     borderRadius: 2,
     marginRight: 12,
   },
   progressFill: {
     height: 4,
-    backgroundColor: '#3B5FE3', // Cobalt accent
+    backgroundColor: '#FFFFFF',
     borderRadius: 2,
   },
   progressText: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#AAAAAA',
+    color: '#9CA3AF',
   },
   contentContainer: {
     flex: 1,
@@ -117,12 +123,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    fontFamily: 'Playfair Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 28,
     color: '#FFFFFF',
     marginBottom: 32,
-    letterSpacing: -0.5, // Tighter letter-spacing for headlines
     textAlign: 'center',
+    letterSpacing: -0.5,
   },
   analyzeContainer: {
     alignItems: 'center',
@@ -140,19 +146,19 @@ const styles = StyleSheet.create({
   analyzeProgressContainer: {
     width: '100%',
     height: 4,
-    backgroundColor: '#2A2F3E', // Darker gray
+    backgroundColor: '#1f1f1f',
     borderRadius: 2,
     marginBottom: 8,
   },
   analyzeProgressBar: {
     height: 4,
-    backgroundColor: '#3B5FE3', // Cobalt accent
+    backgroundColor: '#FFFFFF',
     borderRadius: 2,
   },
   analyzeProgressText: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#AAAAAA',
+    color: '#9CA3AF',
   },
   completeContainer: {
     alignItems: 'center',
@@ -169,25 +175,33 @@ const styles = StyleSheet.create({
   completeSubtext: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#AAAAAA',
+    color: '#9CA3AF',
     textAlign: 'center',
   },
   buttonContainer: {
     padding: 24,
   },
   button: {
-    backgroundColor: '#3B5FE3', // Cobalt accent
+    backgroundColor: '#FFFFFF',
     paddingVertical: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1f1f1f',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
   },
   buttonDisabled: {
-    backgroundColor: '#2A2F3E', // Darker gray
+    backgroundColor: '#1f1f1f',
+    borderColor: '#0a0a0a',
   },
   buttonText: {
     fontFamily: 'Inter-SemiBold',
-    fontSize: 18,
-    color: '#FFFFFF',
+    fontSize: 16,
+    color: '#000000',
   },
 });
 

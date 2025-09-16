@@ -1,7 +1,9 @@
 // Onboarding14.js (Page 14 - Testimonial page and Rating pop up)
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Image, Modal } from 'react-native';
-import { AntDesign } from '@expo/vector-icons';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Modal } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { FontAwesome } from '@expo/vector-icons';
 
 const Onboarding14 = ({ navigation }) => {
   const [ratingModalVisible, setRatingModalVisible] = useState(false);
@@ -19,20 +21,20 @@ const Onboarding14 = ({ navigation }) => {
       <View style={styles.contentContainer}>
         <Text style={styles.title}>Success stories</Text>
 
-        <View style={styles.testimonialCard}>
+        <View style={[styles.testimonialCard, styles.firstCard]}>
           <View style={styles.testimonialHeader}>
             <Image
               source={require('../../../assets/peakheight-logo.jpg')}
-              style={styles.avatar}
+              style={styles.avatarSmall}
             />
             <View style={styles.testimonialHeaderText}>
               <Text style={styles.testimonialName}>Michael, 17</Text>
-              <Text style={styles.testimonialResult}>+2.3 inches in 8 months</Text>
+              <Text style={styles.testimonialResult}>+2.3 inches in 4 months</Text>
             </View>
           </View>
 
-          <Text style={styles.testimonialQuote}>
-            "I was always the shortest in my class. After following the PeakHeight program for 8 months, I grew over 2 inches. The posture exercises and sleep recommendations made the biggest difference."
+          <Text style={styles.testimonialQuoteSmall}>
+            "PeakHeight helped me add over 2 inches in 4 months. Consistent sleep and posture work made the difference."
           </Text>
         </View>
 
@@ -55,7 +57,7 @@ const Onboarding14 = ({ navigation }) => {
 
         <TouchableOpacity
           style={styles.ratingButton}
-          onPress={() => setRatingModalVisible(true)}
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setRatingModalVisible(true); }}
         >
           <Text style={styles.ratingButtonText}>Rate the app</Text>
         </TouchableOpacity>
@@ -87,8 +89,8 @@ const Onboarding14 = ({ navigation }) => {
                   key={rating}
                   onPress={() => setSelectedRating(rating)}
                 >
-                  <AntDesign
-                    name={rating <= selectedRating ? "star" : "staro"}
+                  <FontAwesome
+                    name={rating <= selectedRating ? "star" : "star-o"}
                     size={32}
                     color={rating <= selectedRating ? "#FFD700" : "#AAAAAA"}
                     style={styles.star}
@@ -100,7 +102,7 @@ const Onboarding14 = ({ navigation }) => {
             <View style={styles.modalButtonsContainer}>
               <TouchableOpacity
                 style={styles.modalSecondaryButton}
-                onPress={() => setRatingModalVisible(false)}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setRatingModalVisible(false); }}
               >
                 <Text style={styles.modalSecondaryButtonText}>Later</Text>
               </TouchableOpacity>
@@ -112,6 +114,7 @@ const Onboarding14 = ({ navigation }) => {
                 ]}
                 disabled={selectedRating === 0}
                 onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setRatingModalVisible(false);
                   // Handle rating submission
                 }}
@@ -129,50 +132,50 @@ const Onboarding14 = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0F1D', // Deep navy base
-    paddingTop: 16,
+    backgroundColor: '#000000',
   },
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 24,
+    paddingTop: 4,
     marginBottom: 24,
   },
   progressBar: {
     flex: 1,
     height: 4,
-    backgroundColor: '#2A2F3E', // Darker gray
+    backgroundColor: '#1f1f1f',
     borderRadius: 2,
     marginRight: 12,
   },
   progressFill: {
     height: 4,
-    backgroundColor: '#3B5FE3', // Cobalt accent
+    backgroundColor: '#FFFFFF',
     borderRadius: 2,
   },
   progressText: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#AAAAAA',
+    color: '#9CA3AF',
   },
   contentContainer: {
     flex: 1,
     paddingHorizontal: 24,
   },
   title: {
-    fontFamily: 'Playfair Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 28,
     color: '#FFFFFF',
-    marginBottom: 32,
-    letterSpacing: -0.5, // Tighter letter-spacing for headlines
+    marginBottom: 24,
+    letterSpacing: -0.5,
   },
   testimonialCard: {
-    backgroundColor: '#1A1F2D', // Slightly lighter than background
-    borderRadius: 8,
+    backgroundColor: '#0a0a0a',
+    borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#D9D9D9', // Platinum gray
+    borderColor: '#1f1f1f',
   },
   testimonialHeader: {
     flexDirection: 'row',
@@ -183,6 +186,12 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
+    marginRight: 12,
+  },
+  avatarSmall: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     marginRight: 12,
   },
   testimonialHeaderText: {
@@ -196,13 +205,22 @@ const styles = StyleSheet.create({
   testimonialResult: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#3B5FE3', // Cobalt accent
+    color: '#9CA3AF',
   },
   testimonialQuote: {
     fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: '#FFFFFF',
     lineHeight: 24,
+  },
+  testimonialQuoteSmall: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: '#FFFFFF',
+    lineHeight: 20,
+  },
+  firstCard: {
+    paddingVertical: 12,
   },
   ratingButton: {
     alignSelf: 'center',
@@ -213,21 +231,28 @@ const styles = StyleSheet.create({
   ratingButtonText: {
     fontFamily: 'Inter-Medium',
     fontSize: 16,
-    color: '#3B5FE3', // Cobalt accent
+    color: '#9CA3AF',
   },
   buttonContainer: {
     padding: 24,
   },
   button: {
-    backgroundColor: '#3B5FE3', // Cobalt accent
-    paddingVertical: 16,
-    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1f1f1f',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
   },
   buttonText: {
     fontFamily: 'Inter-SemiBold',
-    fontSize: 18,
-    color: '#FFFFFF',
+    fontSize: 16,
+    color: '#000000',
   },
   modalOverlay: {
     flex: 1,
@@ -237,11 +262,11 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '80%',
-    backgroundColor: '#0A0F1D', // Deep navy base
-    borderRadius: 8,
+    backgroundColor: '#000000',
+    borderRadius: 12,
     padding: 24,
     borderWidth: 1,
-    borderColor: '#D9D9D9', // Platinum gray
+    borderColor: '#1f1f1f',
   },
   modalTitle: {
     fontFamily: 'Inter-SemiBold',
@@ -268,8 +293,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 8,
     borderWidth: 1,
-    borderColor: '#D9D9D9', // Platinum gray
-    borderRadius: 8,
+    borderColor: '#1f1f1f',
+    borderRadius: 12,
   },
   modalSecondaryButtonText: {
     fontFamily: 'Inter-Medium',
@@ -278,18 +303,22 @@ const styles = StyleSheet.create({
   },
   modalPrimaryButton: {
     flex: 1,
-    backgroundColor: '#3B5FE3', // Cobalt accent
+    backgroundColor: '#FFFFFF',
     paddingVertical: 12,
     alignItems: 'center',
     marginLeft: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1f1f1f',
   },
   modalPrimaryButtonDisabled: {
-    backgroundColor: '#2A2F3E', // Darker gray
+    backgroundColor: '#1f1f1f',
+    borderColor: '#0a0a0a',
   },
   modalPrimaryButtonText: {
     fontFamily: 'Inter-Medium',
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#000000',
   },
 });
 

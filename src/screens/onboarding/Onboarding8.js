@@ -1,11 +1,19 @@
 // Onboarding8.js (Page 8 - What is your foot size?)
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
 
-const Onboarding8 = ({ navigation }) => {
-  const [sizeSystem, setSizeSystem] = useState('us'); // 'us', 'eu', or 'uk'
-  const [footSize, setFootSize] = useState(9); // Default US size
+const Onboarding8 = ({ navigation, data, updateData }) => {
+  const [sizeSystem, setSizeSystem] = useState(data.footSizeSystem || 'us'); // 'us', 'eu', or 'uk'
+  const [footSize, setFootSize] = useState(data.footSize || 0); // Default to 0
+
+  const updateFootSize = (newSize, newSystem) => {
+    updateData({
+      footSize: newSize,
+      footSizeSystem: newSystem
+    });
+  };
 
   const getMinMaxValues = () => {
     switch (sizeSystem) {
@@ -43,6 +51,7 @@ const Onboarding8 = ({ navigation }) => {
             onPress={() => {
               setSizeSystem('us');
               setFootSize(9); // Reset to default US size
+              updateFootSize(9, 'us');
             }}
           >
             <Text style={[
@@ -59,6 +68,7 @@ const Onboarding8 = ({ navigation }) => {
             onPress={() => {
               setSizeSystem('eu');
               setFootSize(42); // Reset to default EU size
+              updateFootSize(42, 'eu');
             }}
           >
             <Text style={[
@@ -75,6 +85,7 @@ const Onboarding8 = ({ navigation }) => {
             onPress={() => {
               setSizeSystem('uk');
               setFootSize(8); // Reset to default UK size
+              updateFootSize(8, 'uk');
             }}
           >
             <Text style={[
@@ -96,10 +107,13 @@ const Onboarding8 = ({ navigation }) => {
             maximumValue={max}
             step={0.5}
             value={footSize}
-            onValueChange={setFootSize}
-            minimumTrackTintColor="#3B5FE3"
-            maximumTrackTintColor="#2A2F3E"
-            thumbTintColor="#3B5FE3"
+            onValueChange={(value) => {
+              setFootSize(value);
+              updateFootSize(value, sizeSystem);
+            }}
+            minimumTrackTintColor="#FFFFFF"
+            maximumTrackTintColor="#1f1f1f"
+            thumbTintColor="#FFFFFF"
           />
 
           <View style={styles.sliderLabelsContainer}>
@@ -128,49 +142,49 @@ const Onboarding8 = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0F1D', // Deep navy base
-    paddingTop: 16,
+    backgroundColor: '#000000',
   },
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 24,
+    paddingTop: 4,
     marginBottom: 24,
   },
   progressBar: {
     flex: 1,
     height: 4,
-    backgroundColor: '#2A2F3E', // Darker gray
+    backgroundColor: '#1f1f1f',
     borderRadius: 2,
     marginRight: 12,
   },
   progressFill: {
     height: 4,
-    backgroundColor: '#3B5FE3', // Cobalt accent
+    backgroundColor: '#FFFFFF',
     borderRadius: 2,
   },
   progressText: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#AAAAAA',
+    color: '#9CA3AF',
   },
   contentContainer: {
     flex: 1,
     paddingHorizontal: 24,
   },
   title: {
-    fontFamily: 'Playfair Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 28,
     color: '#FFFFFF',
-    marginBottom: 32,
-    letterSpacing: -0.5, // Tighter letter-spacing for headlines
+    marginBottom: 24,
+    letterSpacing: -0.5,
   },
   segmentContainer: {
     flexDirection: 'row',
-    marginBottom: 40,
-    borderRadius: 8,
+    marginBottom: 32,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#D9D9D9', // Platinum gray
+    borderColor: '#1f1f1f',
     overflow: 'hidden',
   },
   segmentButton: {
@@ -179,7 +193,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   segmentButtonActive: {
-    backgroundColor: '#3B5FE3', // Cobalt accent
+    backgroundColor: '#111111',
   },
   segmentButtonText: {
     fontFamily: 'Inter-Medium',
@@ -201,7 +215,7 @@ const styles = StyleSheet.create({
   sizeLabel: {
     fontFamily: 'Inter-Regular',
     fontSize: 16,
-    color: '#AAAAAA',
+    color: '#9CA3AF',
     marginTop: 8,
   },
   sliderContainer: {
@@ -219,33 +233,42 @@ const styles = StyleSheet.create({
   sliderLabel: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#AAAAAA',
+    color: '#9CA3AF',
   },
   confidenceTag: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(59, 95, 227, 0.1)', // Very subtle cobalt accent
+    backgroundColor: '#0a0a0a',
     paddingVertical: 4,
     paddingHorizontal: 12,
-    borderRadius: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#1f1f1f',
   },
   confidenceText: {
     fontFamily: 'Inter-Medium',
     fontSize: 12,
-    color: '#3B5FE3', // Cobalt accent
+    color: '#9CA3AF',
   },
   buttonContainer: {
     padding: 24,
   },
   button: {
-    backgroundColor: '#3B5FE3', // Cobalt accent
-    paddingVertical: 16,
-    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1f1f1f',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
   },
   buttonText: {
     fontFamily: 'Inter-SemiBold',
-    fontSize: 18,
-    color: '#FFFFFF',
+    fontSize: 16,
+    color: '#000000',
   },
 });
 

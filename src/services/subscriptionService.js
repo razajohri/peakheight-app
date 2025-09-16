@@ -1,515 +1,312 @@
+// import Purchases from 'react-native-purchases'; // Commented out for testing
 import { supabase } from '../config/supabase';
-import { API_KEYS } from '../config/apiKeys';
 
-// Subscription service with RevenueCat integration
-export class SubscriptionService {
-  // =============================================
-  // REVENUECAT INTEGRATION
-  // =============================================
+class SubscriptionService {
+  // RevenueCat product IDs - these should match your RevenueCat dashboard
+  static PRODUCT_IDS = {
+    WEEKLY: 'peakheight_weekly',
+    YEARLY: 'peakheight_yearly',
+  };
 
-  // Initialize RevenueCat
-  static async initializeRevenueCat() {
+  // Initialize RevenueCat (Mock version for testing)
+  static async initialize() {
     try {
-      // This would typically be done in the app initialization
-      // For now, we'll simulate the initialization
-      console.log('RevenueCat initialized with API key:', API_KEYS.REVENUECAT_API_KEY);
-      return { success: true, error: null };
+      console.log('SubscriptionService: Mock initialization - RevenueCat not configured');
+      // Mock initialization for testing
+      // In production, uncomment the RevenueCat code below:
+
+      // const apiKey = __DEV__
+      //   ? 'your_sandbox_api_key'
+      //   : 'your_production_api_key';
+      // await Purchases.configure({ apiKey });
+
+      // const { data: { user } } = await supabase.auth.getUser();
+      // if (user) {
+      //   await Purchases.logIn(user.id);
+      // }
     } catch (error) {
-      console.error('Initialize RevenueCat error:', error);
-      return { success: false, error: error.message };
+      console.error('Error initializing RevenueCat:', error);
     }
   }
 
-  // Get available subscription plans
-  static async getSubscriptionPlans() {
+  // Get available packages (Mock version for testing)
+  static async getAvailablePackages() {
     try {
-      const { data, error } = await supabase
-        .from('subscription_plans')
-        .select('*')
-        .eq('is_active', true)
-        .order('price');
+      console.log('SubscriptionService: Mock packages - RevenueCat not configured');
 
-      if (error) {
-        throw new Error(this.getErrorMessage(error));
-      }
-
-      return { plans: data, error: null };
-    } catch (error) {
-      console.error('Get subscription plans error:', error);
-      return { plans: null, error: error.message };
-    }
-  }
-
-  // Purchase subscription
-  static async purchaseSubscription(userId, planId, productId) {
-    try {
-      // This would integrate with RevenueCat SDK
-      // For now, we'll simulate the purchase process
-
-      const { data: plan, error: planError } = await supabase
-        .from('subscription_plans')
-        .select('*')
-        .eq('id', planId)
-        .single();
-
-      if (planError) {
-        throw new Error(this.getErrorMessage(planError));
-      }
-
-      // Simulate successful purchase
-      const subscriptionData = {
-        user_id: userId,
-        plan_id: planId,
-        revenuecat_user_id: `rc_${userId}`,
-        revenuecat_entitlement: 'premium',
-        status: 'active',
-        start_date: new Date().toISOString(),
-        end_date: new Date(Date.now() + plan.duration_days * 24 * 60 * 60 * 1000).toISOString(),
-        auto_renew: true,
+      // Mock packages for testing
+      return {
+        weekly: {
+          product: {
+            identifier: this.PRODUCT_IDS.WEEKLY,
+            priceString: '$4.99'
+          }
+        },
+        yearly: {
+          product: {
+            identifier: this.PRODUCT_IDS.YEARLY,
+            priceString: '$29.99'
+          }
+        }
       };
 
-      const { data, error } = await supabase
-        .from('user_subscriptions')
-        .insert(subscriptionData)
-        .select()
-        .single();
+      // In production, uncomment the RevenueCat code below:
+      // const offerings = await Purchases.getOfferings();
+      // if (offerings.current) {
+      //   return {
+      //     weekly: offerings.current.weekly,
+      //     yearly: offerings.current.annual,
+      //   };
+      // }
+      // return null;
+    } catch (error) {
+      console.error('Error getting packages:', error);
+      return null;
+    }
+  }
 
-      if (error) {
-        throw new Error(this.getErrorMessage(error));
-      }
+  // Purchase a subscription (Mock version for testing)
+  static async purchasePackage(packageToPurchase) {
+    try {
+      console.log('SubscriptionService: Mock purchase - RevenueCat not configured');
 
-      // Update user premium status
+      // Mock purchase for testing
+      const mockCustomerInfo = {
+        entitlements: {
+          active: {
+            premium: {
+              productIdentifier: packageToPurchase?.product?.identifier || this.PRODUCT_IDS.YEARLY,
+              expirationDate: new Date(Date.now() + (packageToPurchase?.product?.identifier === this.PRODUCT_IDS.WEEKLY ? 7 : 365) * 24 * 60 * 60 * 1000).toISOString()
+            }
+          }
+        },
+        originalAppUserId: 'mock_user_id',
+        originalPurchaseDate: new Date().toISOString(),
+        latestExpirationDate: new Date(Date.now() + (packageToPurchase?.product?.identifier === this.PRODUCT_IDS.WEEKLY ? 7 : 365) * 24 * 60 * 60 * 1000).toISOString()
+      };
+
+      // Update user subscription status in database
+      await this.updateUserSubscriptionStatus(mockCustomerInfo);
+
+      return {
+        success: true,
+        customerInfo: mockCustomerInfo,
+      };
+
+      // In production, uncomment the RevenueCat code below:
+      // const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
+      // await this.updateUserSubscriptionStatus(customerInfo);
+      // return { success: true, customerInfo };
+    } catch (error) {
+      console.error('Error purchasing package:', error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  // Restore purchases (Mock version for testing)
+  static async restorePurchases() {
+    try {
+      console.log('SubscriptionService: Mock restore - RevenueCat not configured');
+
+      // Mock restore for testing
+      const mockCustomerInfo = {
+        entitlements: { active: {} },
+        originalAppUserId: 'mock_user_id',
+        originalPurchaseDate: null,
+        latestExpirationDate: null
+      };
+
+      // Update user subscription status in database
+      await this.updateUserSubscriptionStatus(mockCustomerInfo);
+
+        return {
+        success: true,
+        customerInfo: mockCustomerInfo,
+        };
+
+      // In production, uncomment the RevenueCat code below:
+      // const customerInfo = await Purchases.restorePurchases();
+      // await this.updateUserSubscriptionStatus(customerInfo);
+      // return { success: true, customerInfo };
+    } catch (error) {
+      console.error('Error restoring purchases:', error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  // Check subscription status (Mock version for testing)
+  static async checkSubscriptionStatus() {
+    try {
+      console.log('SubscriptionService: Mock status check - RevenueCat not configured');
+
+      // Mock status check for testing
+      const mockCustomerInfo = {
+        entitlements: { active: {} },
+        originalAppUserId: 'mock_user_id',
+        originalPurchaseDate: null,
+        latestExpirationDate: null
+      };
+
+      // Update user subscription status in database
+      await this.updateUserSubscriptionStatus(mockCustomerInfo);
+
+      return {
+        isSubscribed: false, // Default to not subscribed for testing
+        customerInfo: mockCustomerInfo,
+      };
+
+      // In production, uncomment the RevenueCat code below:
+      // const customerInfo = await Purchases.getCustomerInfo();
+      // await this.updateUserSubscriptionStatus(customerInfo);
+      // return { isSubscribed: !customerInfo.entitlements.active.isEmpty, customerInfo };
+    } catch (error) {
+      console.error('Error checking subscription status:', error);
+      return {
+        isSubscribed: false,
+        error: error.message,
+      };
+    }
+  }
+
+  // Update user subscription status in database
+  static async updateUserSubscriptionStatus(customerInfo) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const isSubscribed = !customerInfo.entitlements.active.isEmpty;
+      const activeEntitlements = Object.keys(customerInfo.entitlements.active);
+      const latestPurchaseDate = customerInfo.latestExpirationDate;
+
+      // Update user subscription status
       await supabase
         .from('users')
         .update({
-          premium_status: true,
-          premium_expires_at: subscriptionData.end_date,
+          premium_status: isSubscribed,
+          premium_expires_at: latestPurchaseDate,
         })
-        .eq('id', userId);
+        .eq('id', user.id);
 
-      return { subscription: data, error: null };
-    } catch (error) {
-      console.error('Purchase subscription error:', error);
-      return { subscription: null, error: error.message };
-    }
-  }
+      // Insert or update subscription record
+      if (isSubscribed && activeEntitlements.length > 0) {
+        const entitlement = activeEntitlements[0];
+        const productId = customerInfo.entitlements.active[entitlement].productIdentifier;
 
-  // Restore purchases
-  static async restorePurchases(userId) {
-    try {
-      // This would integrate with RevenueCat SDK
-      // For now, we'll check existing subscriptions
-
-      const { data, error } = await supabase
-        .from('user_subscriptions')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw new Error(this.getErrorMessage(error));
-      }
-
-      if (data && new Date(data.end_date) > new Date()) {
-        // Update user premium status
         await supabase
-          .from('users')
-          .update({
-            premium_status: true,
-            premium_expires_at: data.end_date,
-          })
-          .eq('id', userId);
-
-        return { restored: true, subscription: data, error: null };
+          .from('user_subscriptions')
+          .upsert({
+            user_id: user.id,
+            plan_id: this.getPlanIdFromProductId(productId),
+            revenuecat_user_id: customerInfo.originalAppUserId,
+            revenuecat_entitlement: entitlement,
+            status: 'active',
+            start_date: customerInfo.originalPurchaseDate,
+            end_date: latestPurchaseDate,
+            auto_renew: true,
+          }, {
+            onConflict: 'user_id',
+          });
       }
-
-      return { restored: false, subscription: null, error: null };
     } catch (error) {
-      console.error('Restore purchases error:', error);
-      return { restored: false, subscription: null, error: error.message };
+      console.error('Error updating subscription status:', error);
     }
   }
 
-  // Cancel subscription
-  static async cancelSubscription(userId) {
-    try {
-      const { data, error } = await supabase
-        .from('user_subscriptions')
-        .update({
-          status: 'cancelled',
-          auto_renew: false,
-        })
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .select()
-        .single();
-
-      if (error) {
-        throw new Error(this.getErrorMessage(error));
-      }
-
-      return { subscription: data, error: null };
-    } catch (error) {
-      console.error('Cancel subscription error:', error);
-      return { subscription: null, error: error.message };
+  // Get plan ID from product ID
+  static getPlanIdFromProductId(productId) {
+    switch (productId) {
+      case this.PRODUCT_IDS.WEEKLY:
+        return 'weekly_premium';
+      case this.PRODUCT_IDS.YEARLY:
+        return 'yearly_premium';
+      default:
+        return 'unknown';
     }
   }
 
-  // =============================================
-  // PREMIUM FEATURE GATING
-  // =============================================
+  // Get subscription info for display
+  static getSubscriptionInfo(customerInfo) {
+    const activeEntitlements = Object.keys(customerInfo.entitlements.active);
 
-  // Check if user has premium access
-  static async checkPremiumAccess(userId) {
+    if (activeEntitlements.length === 0) {
+      return {
+        isActive: false,
+        planType: null,
+        expiresAt: null,
+      };
+    }
+
+    const entitlement = customerInfo.entitlements.active[activeEntitlements[0]];
+    const productId = entitlement.productIdentifier;
+
+    return {
+      isActive: true,
+      planType: productId === this.PRODUCT_IDS.YEARLY ? 'yearly' : 'weekly',
+      expiresAt: entitlement.expirationDate,
+      productId,
+    };
+  }
+
+  // Handle subscription changes (Mock version for testing)
+  static setupSubscriptionListener() {
+    console.log('SubscriptionService: Mock listener setup - RevenueCat not configured');
+    // Mock listener for testing
+    // In production, uncomment the RevenueCat code below:
+    // Purchases.addCustomerInfoUpdateListener((customerInfo) => {
+    //   this.updateUserSubscriptionStatus(customerInfo);
+    // });
+  }
+
+  // Get pricing info for display
+  static async getPricingInfo() {
     try {
-      const { data, error } = await supabase
-        .from('user_subscriptions')
-        .select('status, end_date, plan_id')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .single();
+      const packages = await this.getAvailablePackages();
 
-      if (error && error.code !== 'PGRST116') {
-        throw new Error(this.getErrorMessage(error));
-      }
-
-      if (data) {
-        const isActive = data.status === 'active' &&
-          new Date(data.end_date) > new Date();
-
+      if (!packages) {
+        // Fallback pricing if RevenueCat is not available
         return {
-          hasAccess: isActive,
-          subscription: data,
-          error: null
+          weekly: {
+            price: '$4.99',
+            period: 'week',
+            productId: this.PRODUCT_IDS.WEEKLY,
+          },
+          yearly: {
+            price: '$0.58',
+            period: 'week',
+            billingPeriod: 'year',
+            totalPrice: '$29.99',
+            productId: this.PRODUCT_IDS.YEARLY,
+            isBestDeal: true,
+          },
         };
       }
 
-      return { hasAccess: false, subscription: null, error: null };
-    } catch (error) {
-      console.error('Check premium access error:', error);
-      return { hasAccess: false, subscription: null, error: error.message };
-    }
-  }
-
-  // Check specific premium feature access
-  static async checkFeatureAccess(userId, feature) {
-    try {
-      const { hasAccess, subscription } = await this.checkPremiumAccess(userId);
-
-      if (!hasAccess) {
-        return { hasAccess: false, reason: 'No active subscription' };
-      }
-
-      // Check if feature is included in the plan
-      const { data: plan, error } = await supabase
-        .from('subscription_plans')
-        .select('features')
-        .eq('id', subscription.plan_id)
-        .single();
-
-      if (error) {
-        return { hasAccess: false, reason: 'Plan not found' };
-      }
-
-      const features = plan.features || [];
-      const hasFeature = features.includes(feature);
-
       return {
-        hasAccess: hasFeature,
-        reason: hasFeature ? 'Feature included' : 'Feature not included in plan'
+        weekly: {
+          price: packages.weekly?.product.priceString || '$4.99',
+          period: 'week',
+          productId: packages.weekly?.product.identifier,
+        },
+        yearly: {
+          price: packages.yearly?.product.priceString || '$0.58',
+          period: 'week',
+          billingPeriod: 'year',
+          totalPrice: packages.yearly?.product.priceString || '$29.99',
+          productId: packages.yearly?.product.identifier,
+          isBestDeal: true,
+        },
       };
     } catch (error) {
-      console.error('Check feature access error:', error);
-      return { hasAccess: false, reason: 'Error checking access' };
+      console.error('Error getting pricing info:', error);
+      return null;
     }
-  }
-
-  // Get premium features for user
-  static async getPremiumFeatures(userId) {
-    try {
-      const { hasAccess, subscription } = await this.checkPremiumAccess(userId);
-
-      if (!hasAccess) {
-        return { features: [], error: null };
-      }
-
-      const { data: plan, error } = await supabase
-        .from('subscription_plans')
-        .select('features')
-        .eq('id', subscription.plan_id)
-        .single();
-
-      if (error) {
-        throw new Error(this.getErrorMessage(error));
-      }
-
-      return { features: plan.features || [], error: null };
-    } catch (error) {
-      console.error('Get premium features error:', error);
-      return { features: [], error: error.message };
-    }
-  }
-
-  // =============================================
-  // SUBSCRIPTION MANAGEMENT
-  // =============================================
-
-  // Get user subscription details
-  static async getUserSubscription(userId) {
-    try {
-      const { data, error } = await supabase
-        .from('user_subscriptions')
-        .select(`
-          *,
-          subscription_plans (name, description, price, features)
-        `)
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw new Error(this.getErrorMessage(error));
-      }
-
-      return { subscription: data, error: null };
-    } catch (error) {
-      console.error('Get user subscription error:', error);
-      return { subscription: null, error: error.message };
-    }
-  }
-
-  // Update subscription status (webhook from RevenueCat)
-  static async updateSubscriptionStatus(userId, statusData) {
-    try {
-      const { data, error } = await supabase
-        .from('user_subscriptions')
-        .update({
-          status: statusData.status,
-          end_date: statusData.end_date,
-          auto_renew: statusData.auto_renew,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', userId)
-        .eq('revenuecat_user_id', statusData.revenuecat_user_id)
-        .select()
-        .single();
-
-      if (error) {
-        throw new Error(this.getErrorMessage(error));
-      }
-
-      // Update user premium status
-      const isActive = statusData.status === 'active' &&
-        new Date(statusData.end_date) > new Date();
-
-      await supabase
-        .from('users')
-        .update({
-          premium_status: isActive,
-          premium_expires_at: statusData.end_date,
-        })
-        .eq('id', userId);
-
-      return { subscription: data, error: null };
-    } catch (error) {
-      console.error('Update subscription status error:', error);
-      return { subscription: null, error: error.message };
-    }
-  }
-
-  // Get subscription analytics
-  static async getSubscriptionAnalytics() {
-    try {
-      const { data, error } = await supabase
-        .from('user_subscriptions')
-        .select('status, plan_id, created_at, end_date');
-
-      if (error) {
-        throw new Error(this.getErrorMessage(error));
-      }
-
-      const analytics = {
-        totalSubscriptions: data.length,
-        activeSubscriptions: data.filter(s => s.status === 'active').length,
-        cancelledSubscriptions: data.filter(s => s.status === 'cancelled').length,
-        expiredSubscriptions: data.filter(s => s.status === 'expired').length,
-        planDistribution: {},
-        monthlyRevenue: 0,
-      };
-
-      // Calculate plan distribution
-      data.forEach(subscription => {
-        const planId = subscription.plan_id;
-        analytics.planDistribution[planId] = (analytics.planDistribution[planId] || 0) + 1;
-      });
-
-      return { analytics, error: null };
-    } catch (error) {
-      console.error('Get subscription analytics error:', error);
-      return { analytics: null, error: error.message };
-    }
-  }
-
-  // =============================================
-  // TRIAL MANAGEMENT
-  // =============================================
-
-  // Start free trial
-  static async startFreeTrial(userId, planId = 'monthly') {
-    try {
-      const trialData = {
-        user_id: userId,
-        plan_id: planId,
-        revenuecat_user_id: `rc_${userId}`,
-        revenuecat_entitlement: 'premium',
-        status: 'trial',
-        start_date: new Date().toISOString(),
-        end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
-        auto_renew: true,
-      };
-
-      const { data, error } = await supabase
-        .from('user_subscriptions')
-        .insert(trialData)
-        .select()
-        .single();
-
-      if (error) {
-        throw new Error(this.getErrorMessage(error));
-      }
-
-      // Update user premium status
-      await supabase
-        .from('users')
-        .update({
-          premium_status: true,
-          premium_expires_at: trialData.end_date,
-        })
-        .eq('id', userId);
-
-      return { subscription: data, error: null };
-    } catch (error) {
-      console.error('Start free trial error:', error);
-      return { subscription: null, error: error.message };
-    }
-  }
-
-  // Check if user is eligible for trial
-  static async checkTrialEligibility(userId) {
-    try {
-      const { data, error } = await supabase
-        .from('user_subscriptions')
-        .select('status')
-        .eq('user_id', userId);
-
-      if (error) {
-        throw new Error(this.getErrorMessage(error));
-      }
-
-      // User is eligible if they've never had a subscription
-      const hasHadSubscription = data.length > 0;
-
-      return { eligible: !hasHadSubscription, error: null };
-    } catch (error) {
-      console.error('Check trial eligibility error:', error);
-      return { eligible: false, error: error.message };
-    }
-  }
-
-  // =============================================
-  // PROMOTIONAL OFFERS
-  // =============================================
-
-  // Apply promotional code
-  static async applyPromoCode(userId, promoCode) {
-    try {
-      // This would integrate with RevenueCat promotional offers
-      // For now, we'll simulate the process
-
-      const validPromoCodes = {
-        'HEIGHT2024': { discount: 0.2, description: '20% off first month' },
-        'STUDENT50': { discount: 0.5, description: '50% off for students' },
-        'EARLYBIRD': { discount: 0.3, description: '30% off early bird special' },
-      };
-
-      const promo = validPromoCodes[promoCode.toUpperCase()];
-
-      if (!promo) {
-        return { valid: false, error: 'Invalid promotional code' };
-      }
-
-      return {
-        valid: true,
-        discount: promo.discount,
-        description: promo.description,
-        error: null
-      };
-    } catch (error) {
-      console.error('Apply promo code error:', error);
-      return { valid: false, error: error.message };
-    }
-  }
-
-  // =============================================
-  // UTILITY FUNCTIONS
-  // =============================================
-
-  // Get error message
-  static getErrorMessage(error) {
-    const errorMessages = {
-      'duplicate key value violates unique constraint': 'Subscription already exists.',
-      'insert or update on table violates foreign key constraint': 'Invalid subscription plan.',
-      'new row violates row-level security policy': 'You do not have permission to perform this action.',
-    };
-
-    return errorMessages[error.message] || error.message || 'An unexpected error occurred.';
-  }
-
-  // Format subscription status
-  static formatSubscriptionStatus(status) {
-    const statusMap = {
-      'active': 'Active',
-      'cancelled': 'Cancelled',
-      'expired': 'Expired',
-      'trial': 'Free Trial',
-    };
-
-    return statusMap[status] || status;
-  }
-
-  // Calculate days until expiration
-  static calculateDaysUntilExpiration(endDate) {
-    const now = new Date();
-    const expiration = new Date(endDate);
-    const diffTime = expiration - now;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    return diffDays;
-  }
-
-  // Check if subscription is expiring soon
-  static isSubscriptionExpiringSoon(endDate, daysThreshold = 7) {
-    const daysUntilExpiration = this.calculateDaysUntilExpiration(endDate);
-    return daysUntilExpiration <= daysThreshold && daysUntilExpiration > 0;
   }
 }
-
-// Export individual functions for backward compatibility
-export const initializeRevenueCat = SubscriptionService.initializeRevenueCat;
-export const getSubscriptionPlans = SubscriptionService.getSubscriptionPlans;
-export const purchaseSubscription = SubscriptionService.purchaseSubscription;
-export const restorePurchases = SubscriptionService.restorePurchases;
-export const cancelSubscription = SubscriptionService.cancelSubscription;
-export const checkPremiumAccess = SubscriptionService.checkPremiumAccess;
-export const checkFeatureAccess = SubscriptionService.checkFeatureAccess;
-export const getPremiumFeatures = SubscriptionService.getPremiumFeatures;
-export const getUserSubscription = SubscriptionService.getUserSubscription;
-export const updateSubscriptionStatus = SubscriptionService.updateSubscriptionStatus;
-export const getSubscriptionAnalytics = SubscriptionService.getSubscriptionAnalytics;
-export const startFreeTrial = SubscriptionService.startFreeTrial;
-export const checkTrialEligibility = SubscriptionService.checkTrialEligibility;
-export const applyPromoCode = SubscriptionService.applyPromoCode;
 
 export default SubscriptionService;

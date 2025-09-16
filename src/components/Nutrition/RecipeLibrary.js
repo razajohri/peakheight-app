@@ -10,8 +10,12 @@ import {
   Image,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useUser } from '../../contexts/UserContext';
+import { DailyPlanService } from '../../services/dailyPlanService';
 
 const RecipeLibrary = ({ navigation, onClose }) => {
+  const { userProfile } = useUser();
+  const [adding, setAdding] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedRecipe, setSelectedRecipe] = useState(null);
 
@@ -431,6 +435,24 @@ const RecipeLibrary = ({ navigation, onClose }) => {
     </View>
   );
 
+  const handleAddToToday = async (recipe) => {
+    if (!userProfile?.id || adding) return;
+    try {
+      setAdding(true);
+      const title = `Recipe: ${recipe.name}`;
+      await DailyPlanService.addTaskToToday(userProfile.id, title, {
+        emoji: '🍽️',
+        category: 'nutrition',
+        description: `${recipe.name} • ${recipe.calories} cal • ${recipe.protein}g protein`,
+        estimated_time: recipe.prepTime || '5 minutes'
+      });
+    } catch (e) {
+      console.warn('Failed to add recipe to today', e);
+    } finally {
+      setAdding(false);
+    }
+  };
+
   const RecipeCard = ({ recipe }) => (
     <TouchableOpacity style={styles.recipeCard}>
       <View style={styles.recipeImage}>
@@ -472,9 +494,9 @@ const RecipeLibrary = ({ navigation, onClose }) => {
           <TouchableOpacity style={styles.viewButton} onPress={() => setSelectedRecipe(recipe)}>
             <Text style={styles.viewButtonText}>View Recipe</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.addButton}>
+          <TouchableOpacity style={styles.addButton} onPress={() => handleAddToToday(recipe)} disabled={adding}>
             <Icon name="add" size={16} color="#FFFFFF" />
-            <Text style={styles.addButtonText}>Add to Today's Plan</Text>
+            <Text style={styles.addButtonText}>{adding ? 'Adding...' : "Add to Today's Plan"}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -548,9 +570,9 @@ const RecipeLibrary = ({ navigation, onClose }) => {
         </View>
 
         <View style={styles.recipeDetailActions}>
-          <TouchableOpacity style={styles.addToPlanButton}>
+          <TouchableOpacity style={styles.addToPlanButton} onPress={() => handleAddToToday(recipe)} disabled={adding}>
             <Icon name="add" size={20} color="#FFFFFF" />
-            <Text style={styles.addToPlanButtonText}>Add to Today's Plan</Text>
+            <Text style={styles.addToPlanButtonText}>{adding ? 'Adding...' : "Add to Today's Plan"}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -853,6 +875,7 @@ const styles = StyleSheet.create({
   },
   ingredientsContainer: {
     marginBottom: 16,
+    paddingLeft: 8,
   },
   ingredientsTitle: {
     fontSize: 16,
@@ -872,6 +895,7 @@ const styles = StyleSheet.create({
   },
   instructionsContainer: {
     marginBottom: 16,
+    paddingLeft: 8,
   },
   instructionsTitle: {
     fontSize: 18,
@@ -886,6 +910,7 @@ const styles = StyleSheet.create({
   },
   recipeDetailActions: {
     marginBottom: 28,
+    paddingLeft: 8,
   },
   addToPlanButton: {
     flexDirection: 'row',

@@ -1,6 +1,8 @@
 // Onboarding7.js (Page 7 - Hope)
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import HopeSvg from '../../../assets/Untitled design.svg';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const Onboarding7 = ({ navigation }) => {
   return (
@@ -16,20 +18,13 @@ const Onboarding7 = ({ navigation }) => {
         <Text style={styles.title}>Height isn't just inherited, it's earned</Text>
 
         <View style={styles.imageContainer}>
-          <Image
-            source={require('../../../assets/peakheight-logo.jpg')}
-            style={styles.image}
-            resizeMode="contain"
-          />
+          <HopeSvg width={360} height={260} />
         </View>
 
         <Text style={styles.description}>
-          The right habits can unlock hidden growth potential. Research shows that proper nutrition, sleep, and posture can help you maximize your genetic height potential.
+          The right habits can unlock hidden growth potential.
         </Text>
 
-        <View style={styles.methodContainer}>
-          <Text style={styles.methodLink}>View sources</Text>
-        </View>
       </View>
 
       <View style={styles.buttonContainer}>
@@ -47,83 +42,80 @@ const Onboarding7 = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0F1D', // Deep navy base
-    paddingTop: 16,
+    backgroundColor: '#000000',
   },
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 24,
+    paddingTop: 4,
     marginBottom: 24,
   },
   progressBar: {
     flex: 1,
     height: 4,
-    backgroundColor: '#2A2F3E', // Darker gray
+    backgroundColor: '#1f1f1f',
     borderRadius: 2,
     marginRight: 12,
   },
   progressFill: {
     height: 4,
-    backgroundColor: '#3B5FE3', // Cobalt accent
+    backgroundColor: '#FFFFFF',
     borderRadius: 2,
   },
   progressText: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#AAAAAA',
+    color: '#9CA3AF',
   },
   contentContainer: {
     flex: 1,
     paddingHorizontal: 24,
   },
   title: {
-    fontFamily: 'Playfair Display-Bold',
-    fontSize: 28,
+    fontFamily: 'Inter-Bold',
+    fontSize: 32,
     color: '#FFFFFF',
-    marginBottom: 32,
-    letterSpacing: -0.5, // Tighter letter-spacing for headlines
-    lineHeight: 36,
+    marginBottom: 24,
+    letterSpacing: -0.5,
+    lineHeight: 40,
   },
   imageContainer: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 24,
+    backgroundColor: 'transparent',
   },
-  image: {
-    width: '100%',
-    height: 240,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#D9D9D9', // Platinum gray
+  illustration: {
+    width: 300,
+    height: 220,
   },
   description: {
     fontFamily: 'Inter-Regular',
-    fontSize: 16,
-    color: '#FFFFFF',
-    lineHeight: 24,
+    fontSize: 18,
+    color: '#E5E7EB',
+    lineHeight: 26,
     marginBottom: 24,
-  },
-  methodContainer: {
-    alignItems: 'flex-start',
-  },
-  methodLink: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 16,
-    color: '#3B5FE3', // Cobalt accent
   },
   buttonContainer: {
     padding: 24,
   },
   button: {
-    backgroundColor: '#3B5FE3', // Cobalt accent
-    paddingVertical: 16,
-    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1f1f1f',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
   },
   buttonText: {
     fontFamily: 'Inter-SemiBold',
-    fontSize: 18,
-    color: '#FFFFFF',
+    fontSize: 16,
+    color: '#000000',
   },
 });
 

@@ -1,10 +1,11 @@
 // Onboarding12.js (Page 12 - Do you smoke or drink alcohol?)
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-const Onboarding12 = ({ navigation }) => {
-  const [smokingStatus, setSmokingStatus] = useState(null);
-  const [drinkingStatus, setDrinkingStatus] = useState(null);
+const Onboarding12 = ({ navigation, data, updateData }) => {
+  const [smokingStatus, setSmokingStatus] = useState(data.smokingStatus || null);
+  const [drinkingStatus, setDrinkingStatus] = useState(data.drinkingStatus || null);
 
   const isReadyToContinue = smokingStatus !== null && drinkingStatus !== null;
 
@@ -28,7 +29,10 @@ const Onboarding12 = ({ navigation }) => {
                 styles.optionButton,
                 smokingStatus === true && styles.optionButtonSelected
               ]}
-              onPress={() => setSmokingStatus(true)}
+              onPress={() => {
+                setSmokingStatus(true);
+                updateData({ smokingStatus: true });
+              }}
             >
               <Text style={styles.optionButtonText}>Yes</Text>
             </TouchableOpacity>
@@ -38,7 +42,10 @@ const Onboarding12 = ({ navigation }) => {
                 styles.optionButton,
                 smokingStatus === false && styles.optionButtonSelected
               ]}
-              onPress={() => setSmokingStatus(false)}
+              onPress={() => {
+                setSmokingStatus(false);
+                updateData({ smokingStatus: false });
+              }}
             >
               <Text style={styles.optionButtonText}>No</Text>
             </TouchableOpacity>
@@ -53,7 +60,10 @@ const Onboarding12 = ({ navigation }) => {
                 styles.optionButton,
                 drinkingStatus === true && styles.optionButtonSelected
               ]}
-              onPress={() => setDrinkingStatus(true)}
+              onPress={() => {
+                setDrinkingStatus(true);
+                updateData({ drinkingStatus: true });
+              }}
             >
               <Text style={styles.optionButtonText}>Yes</Text>
             </TouchableOpacity>
@@ -63,7 +73,10 @@ const Onboarding12 = ({ navigation }) => {
                 styles.optionButton,
                 drinkingStatus === false && styles.optionButtonSelected
               ]}
-              onPress={() => setDrinkingStatus(false)}
+              onPress={() => {
+                setDrinkingStatus(false);
+                updateData({ drinkingStatus: false });
+              }}
             >
               <Text style={styles.optionButtonText}>No</Text>
             </TouchableOpacity>
@@ -88,7 +101,10 @@ const Onboarding12 = ({ navigation }) => {
           disabled={!isReadyToContinue}
           onPress={() => navigation.navigate('Onboarding13')}
         >
-          <Text style={styles.buttonText}>Continue</Text>
+          <Text style={[
+            styles.buttonText,
+            !isReadyToContinue && styles.buttonTextDisabled
+          ]}>Continue</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -98,42 +114,42 @@ const Onboarding12 = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0F1D', // Deep navy base
-    paddingTop: 16,
+    backgroundColor: '#000000',
   },
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 24,
+    paddingTop: 4,
     marginBottom: 24,
   },
   progressBar: {
     flex: 1,
     height: 4,
-    backgroundColor: '#2A2F3E', // Darker gray
+    backgroundColor: '#1f1f1f',
     borderRadius: 2,
     marginRight: 12,
   },
   progressFill: {
     height: 4,
-    backgroundColor: '#3B5FE3', // Cobalt accent
+    backgroundColor: '#FFFFFF',
     borderRadius: 2,
   },
   progressText: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#AAAAAA',
+    color: '#9CA3AF',
   },
   contentContainer: {
     flex: 1,
     paddingHorizontal: 24,
   },
   title: {
-    fontFamily: 'Playfair Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 28,
     color: '#FFFFFF',
-    marginBottom: 32,
-    letterSpacing: -0.5, // Tighter letter-spacing for headlines
+    marginBottom: 24,
+    letterSpacing: -0.5,
   },
   questionSection: {
     marginBottom: 32,
@@ -153,13 +169,13 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#D9D9D9', // Platinum gray
-    borderRadius: 8,
+    borderColor: '#1f1f1f',
+    borderRadius: 12,
     marginHorizontal: 8,
   },
   optionButtonSelected: {
-    borderColor: '#3B5FE3', // Cobalt accent
-    backgroundColor: 'rgba(59, 95, 227, 0.1)', // Very subtle cobalt accent
+    borderColor: '#FFFFFF',
+    backgroundColor: '#111111',
   },
   optionButtonText: {
     fontFamily: 'Inter-Medium',
@@ -168,10 +184,10 @@ const styles = StyleSheet.create({
   },
   infoContainer: {
     padding: 16,
-    backgroundColor: 'rgba(59, 95, 227, 0.1)', // Very subtle cobalt accent
-    borderRadius: 8,
+    backgroundColor: '#0a0a0a',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#3B5FE3', // Cobalt accent
+    borderColor: '#1f1f1f',
     marginTop: 16,
   },
   infoText: {
@@ -184,18 +200,29 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   button: {
-    backgroundColor: '#3B5FE3', // Cobalt accent
-    paddingVertical: 16,
-    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1f1f1f',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
   },
   buttonDisabled: {
-    backgroundColor: '#2A2F3E', // Darker gray
+    backgroundColor: '#1f1f1f',
+    borderColor: '#0a0a0a',
   },
   buttonText: {
     fontFamily: 'Inter-SemiBold',
-    fontSize: 18,
-    color: '#FFFFFF',
+    fontSize: 16,
+    color: '#000000',
+  },
+  buttonTextDisabled: {
+    color: '#9CA3AF',
   },
 });
 

@@ -12,6 +12,8 @@ export class AuthService {
         options: {
           data: {
             display_name: userData.displayName || '',
+            first_name: userData.firstName || '',
+            last_name: userData.lastName || '',
             date_of_birth: userData.dateOfBirth || null,
             gender: userData.gender || null,
             current_height: userData.currentHeight || null,
@@ -29,10 +31,8 @@ export class AuthService {
         throw new Error(this.getErrorMessage(error));
       }
 
-      // Create user preferences
-      if (data.user) {
-        await this.createUserPreferences(data.user.id);
-      }
+      // User preferences are now created automatically by the database trigger
+      // No need to create them manually here
 
       return { data, error: null };
     } catch (error) {
@@ -65,9 +65,10 @@ export class AuthService {
     }
   }
 
-  // Sign in with Google OAuth
+  // Sign in with Google (Native)
   static async signInWithGoogle() {
     try {
+      // For now, use OAuth flow. In production, implement native Google Sign-In
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -90,9 +91,10 @@ export class AuthService {
     }
   }
 
-  // Sign in with Apple (iOS only)
+  // Sign in with Apple (Native)
   static async signInWithApple() {
     try {
+      // For now, use OAuth flow. In production, implement native Apple Sign-In
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
@@ -272,7 +274,7 @@ export class AuthService {
           user_preferences (*)
         `)
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         throw new Error(this.getErrorMessage(error));
@@ -288,15 +290,56 @@ export class AuthService {
   // Update user profile
   static async updateUserProfile(userId, updates) {
     try {
+      // Map camelCase fields to snake_case columns used in the database
+      const mapped = { id: userId };
+
+      // Ensure NOT NULL columns and RLS WITH CHECK are satisfied on first insert
+      // Fetch current auth user to include email (required by schema)
+      const { data: authUserData } = await supabase.auth.getUser();
+      if (authUserData && authUserData.user && authUserData.user.email) {
+        mapped.email = authUserData.user.email;
+      }
+
+      // Only include fields that exist in the database schema
+      if (updates.displayName !== undefined) mapped.display_name = updates.displayName;
+      if (updates.firstName !== undefined) mapped.first_name = updates.firstName;
+      if (updates.lastName !== undefined) mapped.last_name = updates.lastName;
+      if (updates.dateOfBirth !== undefined) mapped.date_of_birth = updates.dateOfBirth;
+      if (updates.gender !== undefined) mapped.gender = updates.gender;
+      if (updates.currentHeight !== undefined) mapped.current_height = updates.currentHeight;
+      if (updates.targetHeight !== undefined) mapped.target_height = updates.targetHeight;
+      if (updates.currentWeight !== undefined) mapped.current_weight = updates.currentWeight;
+      if (updates.parentHeightFather !== undefined) mapped.parent_height_father = updates.parentHeightFather;
+      if (updates.parentHeightMother !== undefined) mapped.parent_height_mother = updates.parentHeightMother;
+      if (updates.motivation !== undefined) mapped.motivation = updates.motivation;
+      if (updates.barriers !== undefined) mapped.barriers = updates.barriers;
+      if (updates.onboardingCompleted !== undefined) mapped.onboarding_completed = updates.onboardingCompleted;
+
+      // Additional onboarding fields
+      if (updates.ethnicity !== undefined) mapped.ethnicity = updates.ethnicity;
+      if (updates.footSize !== undefined) mapped.foot_size = updates.footSize;
+      if (updates.footSizeSystem !== undefined) mapped.foot_size_system = updates.footSizeSystem;
+      if (updates.workoutFrequency !== undefined) mapped.workout_frequency = updates.workoutFrequency;
+      if (updates.sleepHours !== undefined) mapped.sleep_hours = updates.sleepHours;
+      if (updates.parentMeasurementSystem !== undefined) mapped.parent_measurement_system = updates.parentMeasurementSystem;
+      if (updates.fatherFeet !== undefined) mapped.father_feet = updates.fatherFeet;
+      if (updates.fatherInches !== undefined) mapped.father_inches = updates.fatherInches;
+      if (updates.motherFeet !== undefined) mapped.mother_feet = updates.motherFeet;
+      if (updates.motherInches !== undefined) mapped.mother_inches = updates.motherInches;
+      if (updates.fatherCm !== undefined) mapped.father_cm = updates.fatherCm;
+      if (updates.motherCm !== undefined) mapped.mother_cm = updates.motherCm;
+      if (updates.smokingStatus !== undefined) mapped.smoking_status = updates.smokingStatus;
+      if (updates.drinkingStatus !== undefined) mapped.drinking_status = updates.drinkingStatus;
+
+      // Add updated_at timestamp
+      mapped.updated_at = new Date().toISOString();
+
+      // Upsert to ensure row exists (insert if missing, update if present)
       const { data, error } = await supabase
         .from('users')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', userId)
+        .upsert(mapped, { onConflict: 'id' })
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) {
         throw new Error(this.getErrorMessage(error));

@@ -6,6 +6,7 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { COLORS } from '../../utils/constants';
+import HapticFeedback from '../../utils/hapticFeedback';
 
 export default function Button({
   title,
@@ -16,11 +17,12 @@ export default function Button({
   disabled = false,
   loading = false,
   size = 'medium',
+  haptic = true,
   ...props
 }) {
   const getButtonStyle = () => {
     const baseStyle = [styles.button, styles[size]];
-    
+
     if (variant === 'primary') {
       baseStyle.push(styles.primary);
     } else if (variant === 'secondary') {
@@ -30,17 +32,17 @@ export default function Button({
     } else if (variant === 'text') {
       baseStyle.push(styles.text);
     }
-    
+
     if (disabled) {
       baseStyle.push(styles.disabled);
     }
-    
+
     return baseStyle;
   };
 
   const getTextStyle = () => {
     const baseStyle = [styles.buttonText];
-    
+
     if (variant === 'primary') {
       baseStyle.push(styles.primaryText);
     } else if (variant === 'secondary') {
@@ -50,18 +52,23 @@ export default function Button({
     } else if (variant === 'text') {
       baseStyle.push(styles.textText);
     }
-    
+
     if (disabled) {
       baseStyle.push(styles.disabledText);
     }
-    
+
     return baseStyle;
   };
 
   return (
     <TouchableOpacity
       style={[...getButtonStyle(), style]}
-      onPress={onPress}
+      onPress={(e) => {
+        if (haptic && !disabled && !loading) {
+          HapticFeedback.light();
+        }
+        onPress && onPress(e);
+      }}
       disabled={disabled || loading}
       activeOpacity={0.8}
       {...props}
@@ -77,10 +84,17 @@ export default function Button({
 
 const styles = StyleSheet.create({
   button: {
-    borderRadius: 25,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: '#1f1f1f',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
   },
   small: {
     paddingHorizontal: 16,
@@ -98,40 +112,40 @@ const styles = StyleSheet.create({
     minHeight: 56,
   },
   primary: {
-    backgroundColor: COLORS.PRIMARY,
+    backgroundColor: '#FFFFFF',
   },
   secondary: {
-    backgroundColor: COLORS.SECONDARY,
+    backgroundColor: '#0a0a0a',
   },
   outline: {
     backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: COLORS.PRIMARY,
+    borderWidth: 1,
+    borderColor: '#1f1f1f',
   },
   text: {
     backgroundColor: 'transparent',
   },
   disabled: {
-    opacity: 0.5,
+    opacity: 0.7,
   },
   buttonText: {
+    fontFamily: 'Inter-SemiBold',
     fontSize: 16,
-    fontWeight: '600',
     textAlign: 'center',
   },
   primaryText: {
-    color: COLORS.BACKGROUND,
+    color: '#000000',
   },
   secondaryText: {
-    color: COLORS.TEXT_PRIMARY,
+    color: '#FFFFFF',
   },
   outlineText: {
-    color: COLORS.PRIMARY,
+    color: '#FFFFFF',
   },
   textText: {
-    color: COLORS.PRIMARY,
+    color: '#FFFFFF',
   },
   disabledText: {
-    opacity: 0.5,
+    opacity: 0.7,
   },
 });

@@ -1,20 +1,53 @@
 // Onboarding6.js (Page 6 - How tall are your parents?)
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
 
-const Onboarding6 = ({ navigation }) => {
-  const [measurementSystem, setMeasurementSystem] = useState('imperial'); // 'imperial' or 'metric'
+const Onboarding6 = ({ navigation, data, updateData }) => {
+  const [measurementSystem, setMeasurementSystem] = useState(data.parentMeasurementSystem || 'imperial'); // 'imperial' or 'metric'
 
   // Imperial
-  const [fatherFeet, setFatherFeet] = useState(5);
-  const [fatherInches, setFatherInches] = useState(10);
-  const [motherFeet, setMotherFeet] = useState(5);
-  const [motherInches, setMotherInches] = useState(4);
+  const [fatherFeet, setFatherFeet] = useState(data.fatherFeet || 0);
+  const [fatherInches, setFatherInches] = useState(data.fatherInches || 0);
+  const [motherFeet, setMotherFeet] = useState(data.motherFeet || 0);
+  const [motherInches, setMotherInches] = useState(data.motherInches || 0);
 
   // Metric
-  const [fatherCm, setFatherCm] = useState(178);
-  const [motherCm, setMotherCm] = useState(163);
+  const [fatherCm, setFatherCm] = useState(data.fatherCm || 0);
+  const [motherCm, setMotherCm] = useState(data.motherCm || 0);
+
+  const updateParentHeights = () => {
+    if (measurementSystem === 'imperial') {
+      const fatherHeightInCm = (fatherFeet * 30.48) + (fatherInches * 2.54);
+      const motherHeightInCm = (motherFeet * 30.48) + (motherInches * 2.54);
+      updateData({
+        fatherFeet,
+        fatherInches,
+        motherFeet,
+        motherInches,
+        parentHeightFather: fatherHeightInCm,
+        parentHeightMother: motherHeightInCm,
+        parentMeasurementSystem: measurementSystem
+      });
+    } else {
+      const fatherHeightInFeet = Math.floor(fatherCm / 30.48);
+      const fatherHeightInInches = Math.round((fatherCm % 30.48) / 2.54);
+      const motherHeightInFeet = Math.floor(motherCm / 30.48);
+      const motherHeightInInches = Math.round((motherCm % 30.48) / 2.54);
+      updateData({
+        fatherCm,
+        motherCm,
+        parentHeightFather: fatherCm,
+        parentHeightMother: motherCm,
+        fatherFeet: fatherHeightInFeet,
+        fatherInches: fatherHeightInInches,
+        motherFeet: motherHeightInFeet,
+        motherInches: motherHeightInInches,
+        parentMeasurementSystem: measurementSystem
+      });
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -71,10 +104,13 @@ const Onboarding6 = ({ navigation }) => {
                       maximumValue={7}
                       step={1}
                       value={fatherFeet}
-                      onValueChange={setFatherFeet}
-                      minimumTrackTintColor="#3B5FE3"
-                      maximumTrackTintColor="#2A2F3E"
-                      thumbTintColor="#3B5FE3"
+                      onValueChange={(value) => {
+                        setFatherFeet(value);
+                        updateParentHeights();
+                      }}
+                      minimumTrackTintColor="#FFFFFF"
+                      maximumTrackTintColor="#1f1f1f"
+                      thumbTintColor="#FFFFFF"
                     />
                     <Text style={styles.sliderValue}>{fatherFeet} ft</Text>
                   </View>
@@ -89,10 +125,13 @@ const Onboarding6 = ({ navigation }) => {
                       maximumValue={11}
                       step={1}
                       value={fatherInches}
-                      onValueChange={setFatherInches}
-                      minimumTrackTintColor="#3B5FE3"
-                      maximumTrackTintColor="#2A2F3E"
-                      thumbTintColor="#3B5FE3"
+                      onValueChange={(value) => {
+                        setFatherInches(value);
+                        updateParentHeights();
+                      }}
+                      minimumTrackTintColor="#FFFFFF"
+                      maximumTrackTintColor="#1f1f1f"
+                      thumbTintColor="#FFFFFF"
                     />
                     <Text style={styles.sliderValue}>{fatherInches} in</Text>
                   </View>
@@ -108,10 +147,13 @@ const Onboarding6 = ({ navigation }) => {
                     maximumValue={220}
                     step={1}
                     value={fatherCm}
-                    onValueChange={setFatherCm}
-                    minimumTrackTintColor="#3B5FE3"
-                    maximumTrackTintColor="#2A2F3E"
-                    thumbTintColor="#3B5FE3"
+                      onValueChange={(value) => {
+                        setFatherCm(value);
+                        updateParentHeights();
+                      }}
+                    minimumTrackTintColor="#FFFFFF"
+                    maximumTrackTintColor="#1f1f1f"
+                    thumbTintColor="#FFFFFF"
                   />
                   <Text style={styles.sliderValue}>{fatherCm} cm</Text>
                 </View>
@@ -133,10 +175,13 @@ const Onboarding6 = ({ navigation }) => {
                       maximumValue={6}
                       step={1}
                       value={motherFeet}
-                      onValueChange={setMotherFeet}
-                      minimumTrackTintColor="#3B5FE3"
-                      maximumTrackTintColor="#2A2F3E"
-                      thumbTintColor="#3B5FE3"
+                      onValueChange={(value) => {
+                        setMotherFeet(value);
+                        updateParentHeights();
+                      }}
+                      minimumTrackTintColor="#FFFFFF"
+                      maximumTrackTintColor="#1f1f1f"
+                      thumbTintColor="#FFFFFF"
                     />
                     <Text style={styles.sliderValue}>{motherFeet} ft</Text>
                   </View>
@@ -151,10 +196,13 @@ const Onboarding6 = ({ navigation }) => {
                       maximumValue={11}
                       step={1}
                       value={motherInches}
-                      onValueChange={setMotherInches}
-                      minimumTrackTintColor="#3B5FE3"
-                      maximumTrackTintColor="#2A2F3E"
-                      thumbTintColor="#3B5FE3"
+                      onValueChange={(value) => {
+                        setMotherInches(value);
+                        updateParentHeights();
+                      }}
+                      minimumTrackTintColor="#FFFFFF"
+                      maximumTrackTintColor="#1f1f1f"
+                      thumbTintColor="#FFFFFF"
                     />
                     <Text style={styles.sliderValue}>{motherInches} in</Text>
                   </View>
@@ -170,10 +218,13 @@ const Onboarding6 = ({ navigation }) => {
                     maximumValue={190}
                     step={1}
                     value={motherCm}
-                    onValueChange={setMotherCm}
-                    minimumTrackTintColor="#3B5FE3"
-                    maximumTrackTintColor="#2A2F3E"
-                    thumbTintColor="#3B5FE3"
+                      onValueChange={(value) => {
+                        setMotherCm(value);
+                        updateParentHeights();
+                      }}
+                    minimumTrackTintColor="#FFFFFF"
+                    maximumTrackTintColor="#1f1f1f"
+                    thumbTintColor="#FFFFFF"
                   />
                   <Text style={styles.sliderValue}>{motherCm} cm</Text>
                 </View>
@@ -181,7 +232,26 @@ const Onboarding6 = ({ navigation }) => {
             )}
           </View>
 
-          <TouchableOpacity style={styles.skipButton}>
+          <TouchableOpacity
+            style={styles.skipButton}
+            onPress={() => {
+              updateParentHeights();
+              // Clear parent height fields and proceed
+              updateData({
+                parentHeightFather: null,
+                parentHeightMother: null,
+                fatherFeet: null,
+                fatherInches: null,
+                motherFeet: null,
+                motherInches: null,
+                fatherCm: null,
+                motherCm: null,
+                parentMeasurementSystem: measurementSystem
+              });
+              navigation.navigate('Onboarding7');
+            }}
+            activeOpacity={0.85}
+          >
             <Text style={styles.skipButtonText}>I don't know</Text>
           </TouchableOpacity>
         </View>
@@ -202,31 +272,31 @@ const Onboarding6 = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0F1D', // Deep navy base
-    paddingTop: 16,
+    backgroundColor: '#000000',
   },
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 24,
+    paddingTop: 4,
     marginBottom: 24,
   },
   progressBar: {
     flex: 1,
     height: 4,
-    backgroundColor: '#2A2F3E', // Darker gray
+    backgroundColor: '#1f1f1f',
     borderRadius: 2,
     marginRight: 12,
   },
   progressFill: {
     height: 4,
-    backgroundColor: '#3B5FE3', // Cobalt accent
+    backgroundColor: '#FFFFFF',
     borderRadius: 2,
   },
   progressText: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#AAAAAA',
+    color: '#9CA3AF',
   },
   scrollView: {
     flex: 1,
@@ -236,18 +306,18 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   title: {
-    fontFamily: 'Playfair Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 28,
     color: '#FFFFFF',
-    marginBottom: 32,
-    letterSpacing: -0.5, // Tighter letter-spacing for headlines
+    marginBottom: 24,
+    letterSpacing: -0.5,
   },
   segmentContainer: {
     flexDirection: 'row',
-    marginBottom: 32,
-    borderRadius: 8,
+    marginBottom: 24,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#D9D9D9', // Platinum gray
+    borderColor: '#1f1f1f',
     overflow: 'hidden',
   },
   segmentButton: {
@@ -256,7 +326,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   segmentButtonActive: {
-    backgroundColor: '#3B5FE3', // Cobalt accent
+    backgroundColor: '#111111',
   },
   segmentButtonText: {
     fontFamily: 'Inter-Medium',
@@ -281,7 +351,7 @@ const styles = StyleSheet.create({
   sliderLabel: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#AAAAAA',
+    color: '#9CA3AF',
     marginBottom: 8,
   },
   sliderValueContainer: {
@@ -307,21 +377,28 @@ const styles = StyleSheet.create({
   skipButtonText: {
     fontFamily: 'Inter-Medium',
     fontSize: 16,
-    color: '#AAAAAA',
+    color: '#9CA3AF',
   },
   buttonContainer: {
     padding: 24,
   },
   button: {
-    backgroundColor: '#3B5FE3', // Cobalt accent
-    paddingVertical: 16,
-    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1f1f1f',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
   },
   buttonText: {
     fontFamily: 'Inter-SemiBold',
-    fontSize: 18,
-    color: '#FFFFFF',
+    fontSize: 16,
+    color: '#000000',
   },
 });
 

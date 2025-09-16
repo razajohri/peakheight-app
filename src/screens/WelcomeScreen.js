@@ -5,10 +5,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
-  Dimensions
+  Dimensions,
+  Image
 } from 'react-native';
 import { COLORS, APP_CONFIG } from '../utils/constants';
-import LogoSvg from '../../docs/images/Logo Design.svg';
 
 const { width, height } = Dimensions.get('window');
 
@@ -17,6 +17,7 @@ export default function WelcomeScreen({ onGetStarted }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // This screen is no longer auto-shown; leave animations but remove auto-transition
     Animated.parallel([
       Animated.timing(slideAnim, {
         toValue: 0,
@@ -29,13 +30,6 @@ export default function WelcomeScreen({ onGetStarted }) {
         useNativeDriver: true,
       }),
     ]).start();
-
-    // Auto-transition to onboarding after animation completes
-    const timer = setTimeout(() => {
-      onGetStarted();
-    }, 2500); // 2.5 seconds total (animation + brief pause)
-
-    return () => clearTimeout(timer);
   }, [onGetStarted]);
 
   return (
@@ -51,14 +45,14 @@ export default function WelcomeScreen({ onGetStarted }) {
       >
         <View style={styles.header}>
           <View style={styles.logo}>
-            <LogoSvg width={96} height={96} />
+            <Image source={require('../../assets/icon.png')} style={{ width: 96, height: 96, borderRadius: 20, marginBottom: 8 }} />
             <Text style={styles.logoText}>{APP_CONFIG.NAME}</Text>
           </View>
         </View>
 
-                <View style={styles.heroSection}>
+        <View style={styles.heroSection}>
           <View style={styles.heroImage}>
-            <LogoSvg width={80} height={80} />
+            <Image source={require('../../assets/icon.png')} style={{ width: 80, height: 80, borderRadius: 16 }} />
           </View>
 
           <Text style={styles.title}>Ready to grow taller and stronger?</Text>

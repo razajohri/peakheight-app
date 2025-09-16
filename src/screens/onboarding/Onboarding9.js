@@ -1,9 +1,10 @@
 // Onboarding9.js (Page 9 - How often do you work out?)
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-const Onboarding9 = ({ navigation }) => {
-  const [selectedFrequency, setSelectedFrequency] = useState(null);
+const Onboarding9 = ({ navigation, data, updateData }) => {
+  const [selectedFrequency, setSelectedFrequency] = useState(data.workoutFrequency || null);
 
   const frequencies = [
     { id: 'never', label: 'Never' },
@@ -33,7 +34,10 @@ const Onboarding9 = ({ navigation }) => {
                 styles.optionCard,
                 selectedFrequency === frequency.id && styles.selectedCard
               ]}
-              onPress={() => setSelectedFrequency(frequency.id)}
+              onPress={() => {
+                setSelectedFrequency(frequency.id);
+                updateData({ workoutFrequency: frequency.id });
+              }}
             >
               <Text style={styles.optionText}>{frequency.label}</Text>
             </TouchableOpacity>
@@ -50,7 +54,10 @@ const Onboarding9 = ({ navigation }) => {
           disabled={!selectedFrequency}
           onPress={() => navigation.navigate('Onboarding10')}
         >
-          <Text style={styles.buttonText}>Continue</Text>
+          <Text style={[
+            styles.buttonText,
+            !selectedFrequency && styles.buttonTextDisabled
+          ]}>Continue</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -60,56 +67,56 @@ const Onboarding9 = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0F1D', // Deep navy base
-    paddingTop: 16,
+    backgroundColor: '#000000',
   },
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 24,
+    paddingTop: 4,
     marginBottom: 24,
   },
   progressBar: {
     flex: 1,
     height: 4,
-    backgroundColor: '#2A2F3E', // Darker gray
+    backgroundColor: '#1f1f1f',
     borderRadius: 2,
     marginRight: 12,
   },
   progressFill: {
     height: 4,
-    backgroundColor: '#3B5FE3', // Cobalt accent
+    backgroundColor: '#FFFFFF',
     borderRadius: 2,
   },
   progressText: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#AAAAAA',
+    color: '#9CA3AF',
   },
   contentContainer: {
     flex: 1,
     paddingHorizontal: 24,
   },
   title: {
-    fontFamily: 'Playfair Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 28,
     color: '#FFFFFF',
-    marginBottom: 32,
-    letterSpacing: -0.5, // Tighter letter-spacing for headlines
+    marginBottom: 24,
+    letterSpacing: -0.5,
   },
   optionsContainer: {
     marginTop: 16,
   },
   optionCard: {
     borderWidth: 1,
-    borderColor: '#D9D9D9', // Platinum gray
-    borderRadius: 8,
+    borderColor: '#1f1f1f',
+    borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   selectedCard: {
-    borderColor: '#3B5FE3', // Cobalt accent
-    backgroundColor: 'rgba(59, 95, 227, 0.1)', // Very subtle cobalt accent
+    borderColor: '#FFFFFF',
+    backgroundColor: '#111111',
   },
   optionText: {
     fontFamily: 'Inter-Medium',
@@ -120,18 +127,29 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   button: {
-    backgroundColor: '#3B5FE3', // Cobalt accent
-    paddingVertical: 16,
-    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1f1f1f',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
   },
   buttonDisabled: {
-    backgroundColor: '#2A2F3E', // Darker gray
+    backgroundColor: '#1f1f1f',
+    borderColor: '#0a0a0a',
   },
   buttonText: {
     fontFamily: 'Inter-SemiBold',
-    fontSize: 18,
-    color: '#FFFFFF',
+    fontSize: 16,
+    color: '#000000',
+  },
+  buttonTextDisabled: {
+    color: '#9CA3AF',
   },
 });
 

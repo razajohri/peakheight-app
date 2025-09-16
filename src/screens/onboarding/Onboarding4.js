@@ -1,20 +1,23 @@
 // Onboarding4.js (Page 4 - What is your ethnicity?)
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-const Onboarding4 = ({ navigation }) => {
-  const [selectedEthnicity, setSelectedEthnicity] = useState(null);
+const Onboarding4 = ({ navigation, data, updateData }) => {
+  const [selectedEthnicity, setSelectedEthnicity] = useState(data.ethnicity || null);
 
   const ethnicities = [
     'Asian',
+    'South Asian',
     'Black/African',
     'Caucasian',
     'Hispanic/Latino',
     'Middle Eastern',
     'Native American',
     'Pacific Islander',
-    'Mixed',
-    'Other'
+    'Other',
+    'Prefer not to say'
   ];
 
   return (
@@ -38,7 +41,11 @@ const Onboarding4 = ({ navigation }) => {
                   styles.optionCard,
                   selectedEthnicity === ethnicity && styles.selectedCard
                 ]}
-                onPress={() => setSelectedEthnicity(ethnicity)}
+                onPress={async () => {
+                  try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+                  setSelectedEthnicity(ethnicity);
+                  updateData({ ethnicity });
+                }}
               >
                 <Text style={styles.optionText}>{ethnicity}</Text>
               </TouchableOpacity>
@@ -54,7 +61,11 @@ const Onboarding4 = ({ navigation }) => {
             !selectedEthnicity && styles.buttonDisabled
           ]}
           disabled={!selectedEthnicity}
-          onPress={() => navigation.navigate('Onboarding5')}
+          onPress={async () => {
+            try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+            navigation.navigate('Onboarding5');
+          }}
+          activeOpacity={0.85}
         >
           <Text style={styles.buttonText}>Continue</Text>
         </TouchableOpacity>
@@ -66,42 +77,42 @@ const Onboarding4 = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0F1D', // Deep navy base
-    paddingTop: 16,
+    backgroundColor: '#000000',
   },
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 24,
-    marginBottom: 32,
+    paddingTop: 4,
+    marginBottom: 24,
   },
   progressBar: {
     flex: 1,
     height: 4,
-    backgroundColor: '#2A2F3E', // Darker gray
+    backgroundColor: '#1f1f1f',
     borderRadius: 2,
     marginRight: 12,
   },
   progressFill: {
     height: 4,
-    backgroundColor: '#3B5FE3', // Cobalt accent
+    backgroundColor: '#FFFFFF',
     borderRadius: 2,
   },
   progressText: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#AAAAAA',
+    color: '#9CA3AF',
   },
   contentContainer: {
     flex: 1,
     paddingHorizontal: 24,
   },
   title: {
-    fontFamily: 'Playfair Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 28,
     color: '#FFFFFF',
-    marginBottom: 32,
-    letterSpacing: -0.5, // Tighter letter-spacing for headlines
+    marginBottom: 24,
+    letterSpacing: -0.5,
   },
   scrollView: {
     flex: 1,
@@ -111,14 +122,15 @@ const styles = StyleSheet.create({
   },
   optionCard: {
     borderWidth: 1,
-    borderColor: '#D9D9D9', // Platinum gray
-    borderRadius: 8,
+    borderColor: '#1f1f1f',
+    backgroundColor: '#0a0a0a',
+    borderRadius: 12,
     padding: 16,
     marginBottom: 12,
   },
   selectedCard: {
-    borderColor: '#3B5FE3', // Cobalt accent
-    backgroundColor: 'rgba(59, 95, 227, 0.1)', // Very subtle cobalt accent
+    borderColor: '#FFFFFF',
+    backgroundColor: '#111111',
   },
   optionText: {
     fontFamily: 'Inter-Medium',
@@ -129,18 +141,27 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   button: {
-    backgroundColor: '#3B5FE3', // Cobalt accent
-    paddingVertical: 16,
-    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1f1f1f',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
   },
   buttonDisabled: {
-    backgroundColor: '#2A2F3E', // Darker gray
+    backgroundColor: '#FFFFFF',
+    borderColor: '#1f1f1f',
+    opacity: 0.7,
   },
   buttonText: {
     fontFamily: 'Inter-SemiBold',
-    fontSize: 18,
-    color: '#FFFFFF',
+    fontSize: 16,
+    color: '#000000',
   },
 });
 

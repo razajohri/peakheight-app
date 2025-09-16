@@ -1,40 +1,175 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useUser } from '../../contexts/UserContext';
+import * as Haptics from 'expo-haptics';
+import { DailyPlanService } from '../../services/dailyPlanService';
 
 const GrowthFactors = () => {
   const [isModalVisible, setModalVisible] = useState(false);
+  const [dailyTaskData, setDailyTaskData] = useState(null);
+  const { userProfile, loading } = useUser();
 
-  const factors = [
+  // Fetch daily task data for the last 7 days
+  useEffect(() => {
+    const fetchDailyTaskData = async () => {
+      if (!userProfile) return;
+
+      try {
+        const userProgress = await DailyPlanService.getUserProgress(userProfile.id);
+        if (userProgress) {
+          // Get tasks for the last 7 days
+          const taskData = [];
+          for (let i = 0; i < 7; i++) {
+            const dayNumber = userProgress.current_day - i;
+            if (dayNumber > 0) {
+              const dayTasks = await DailyPlanService.getDailyTasks(userProfile.id, dayNumber);
+              if (dayTasks) {
+                taskData.push({
+                  day: dayNumber,
+                  tasks: dayTasks.tasks || [],
+                  completedTasks: dayTasks.completed_tasks || [],
+                  isCompleted: dayTasks.is_completed || false
+                });
+              }
+            }
+          }
+          setDailyTaskData(taskData);
+        }
+      } catch (error) {
+        console.error('Error fetching daily task data:', error);
+      }
+    };
+
+    fetchDailyTaskData();
+  }, [userProfile]);
+
+  // Calculate growth factor scores based on user data
+  const calculateGrowthFactors = () => {
+    if (!userProfile) {
+      return [
+        { name: 'Sleep Quality', value: 0, icon: 'moon', color: '#000000', trend: null },
+        { name: 'Nutrition', value: 0, icon: 'nutrition', color: '#000000', trend: null },
+        { name: 'Exercise', value: 0, icon: 'fitness', color: '#000000', trend: null },
+        { name: 'Stretching Routine', value: 0, icon: 'fitness', color: '#000000', trend: null }
+      ];
+    }
+
+    // Debug logging
+    console.log('GrowthFactors - dailyTaskData:', dailyTaskData);
+    console.log('GrowthFactors - dailyTaskData length:', dailyTaskData ? dailyTaskData.length : 'null');
+
+    // Calculate Sleep Quality (based on sleep hours)
+    const sleepHours = userProfile.sleep_hours || 0;
+    const sleepScore = Math.min(100, Math.max(0, (sleepHours / 8) * 100));
+    const sleepColor = '#000000'; // Black for all
+    const sleepTrend = sleepScore >= 80 ? 'up' : sleepScore <= 50 ? 'down' : null;
+
+    // Calculate Exercise (based on workout frequency)
+    const workoutFreq = userProfile.workout_frequency;
+    let exerciseScore = 0;
+    if (workoutFreq === 'daily') exerciseScore = 90;
+    else if (workoutFreq === 'often') exerciseScore = 75;
+    else if (workoutFreq === 'sometimes') exerciseScore = 60;
+    else if (workoutFreq === 'rarely') exerciseScore = 30;
+    else exerciseScore = 10;
+
+    const exerciseColor = '#000000'; // Black for all
+    const exerciseTrend = exerciseScore >= 70 ? 'up' : exerciseScore <= 30 ? 'down' : null;
+
+    // Calculate Nutrition (based on daily task completions)
+    let nutritionScore = 0;
+    if (dailyTaskData && dailyTaskData.length > 0) {
+      let nutritionTasksCompleted = 0;
+      let totalNutritionTasks = 0;
+
+      dailyTaskData.forEach(dayData => {
+        if (dayData.tasks && Array.isArray(dayData.tasks)) {
+          dayData.tasks.forEach(task => {
+            if (task.category === 'nutrition') {
+              totalNutritionTasks++;
+              if (dayData.completedTasks && Array.isArray(dayData.completedTasks) && dayData.completedTasks.includes(task.id)) {
+                nutritionTasksCompleted++;
+              }
+            }
+          });
+        }
+      });
+
+      nutritionScore = totalNutritionTasks > 0 ? Math.round((nutritionTasksCompleted / totalNutritionTasks) * 100) : 0;
+      console.log('Nutrition calculation:', { nutritionTasksCompleted, totalNutritionTasks, nutritionScore });
+    } else {
+      nutritionScore = 0; // Default when no data
+      console.log('Nutrition: No daily task data, setting to 0');
+    }
+    const nutritionColor = '#000000'; // Black for all
+    const nutritionTrend = nutritionScore >= 70 ? 'up' : nutritionScore <= 50 ? 'down' : null;
+
+    // Calculate Stretching Routine (based on daily task completions)
+    let stretchingScore = 0;
+    if (dailyTaskData && dailyTaskData.length > 0) {
+      let stretchingTasksCompleted = 0;
+      let totalStretchingTasks = 0;
+
+      dailyTaskData.forEach(dayData => {
+        if (dayData.tasks && Array.isArray(dayData.tasks)) {
+          dayData.tasks.forEach(task => {
+            if (task.category === 'basic_stretching' || task.category === 'advanced_stretching' || task.category === 'exercise') {
+              totalStretchingTasks++;
+              if (dayData.completedTasks && Array.isArray(dayData.completedTasks) && dayData.completedTasks.includes(task.id)) {
+                stretchingTasksCompleted++;
+              }
+            }
+          });
+        }
+      });
+
+      stretchingScore = totalStretchingTasks > 0 ? Math.round((stretchingTasksCompleted / totalStretchingTasks) * 100) : 0;
+      console.log('Stretching calculation:', { stretchingTasksCompleted, totalStretchingTasks, stretchingScore });
+    } else {
+      stretchingScore = 0; // Default when no data
+      console.log('Stretching: No daily task data, setting to 0');
+    }
+    const stretchingColor = '#000000'; // Black for all
+    const stretchingTrend = stretchingScore >= 70 ? 'up' : stretchingScore <= 50 ? 'down' : null;
+
+    return [
     {
       name: 'Sleep Quality',
-      value: 85,
+        value: Math.round(sleepScore),
       icon: 'moon',
-      color: '#4CD964',
-      trend: 'up'
+        color: sleepColor,
+        trend: sleepTrend,
+        tip: `${sleepHours} hours/night. Aim for 8-9 hours for optimal growth hormone production.`
+      },
+      {
+        name: 'Exercise',
+        value: exerciseScore,
+        icon: 'fitness',
+        color: exerciseColor,
+        trend: exerciseTrend,
+        tip: `${workoutFreq || 'No exercise'}. Regular stretching and strength training stimulate bone growth.`
     },
     {
       name: 'Nutrition',
-      value: 65,
+        value: nutritionScore,
       icon: 'nutrition',
-      color: '#3B5FE3',
-      trend: null
+        color: nutritionColor,
+        trend: nutritionTrend,
+        tip: `You've completed ${nutritionScore}% of your nutrition tasks. Focus on protein, calcium, and vitamin D for optimal bone growth.`
     },
     {
-      name: 'Exercise',
-      value: 78,
+        name: 'Stretching Routine',
+        value: stretchingScore,
       icon: 'fitness',
-      color: '#4CD964',
-      trend: 'up'
-    },
-    {
-      name: 'Posture',
-      value: 58,
-      icon: 'body',
-      color: '#FF3B30',
-      trend: 'down'
-    }
-  ];
+        color: stretchingColor,
+        trend: stretchingTrend,
+        tip: `You've completed ${stretchingScore}% of your stretching tasks. Daily stretching helps decompress your spine and can add 0.5-1 inch to your height.`
+      }
+    ];
+  };
+
+  const factors = calculateGrowthFactors();
 
   const renderFactorItem = (factor) => (
     <View key={factor.name} style={styles.factorItem}>
@@ -73,11 +208,25 @@ const GrowthFactors = () => {
     </View>
   );
 
+  if (loading) {
+    return (
+      <View style={styles.factorsSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>MAIN GROWTH FACTORS</Text>
+        </View>
+        <Text style={styles.loadingText}>Loading your growth data...</Text>
+      </View>
+    );
+  }
+
   return (
     <>
       <TouchableOpacity
         style={styles.factorsSection}
-        onPress={() => setModalVisible(true)}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          setModalVisible(true);
+        }}
         activeOpacity={0.7}
       >
         <View style={styles.sectionHeader}>
@@ -103,81 +252,34 @@ const GrowthFactors = () => {
               </TouchableOpacity>
             </View>
 
-            {/* Sleep Quality */}
-            <View style={styles.factorDetail}>
+            {/* Dynamic Growth Factors */}
+            {factors.map((factor) => (
+              <View key={factor.name} style={styles.factorDetail}>
               <View style={styles.factorHeader}>
                 <View style={styles.factorIconContainer}>
-                  <Icon name="moon" size={24} color="#4CD964" />
+                    <Icon name={factor.icon} size={24} color={factor.color} />
                 </View>
                 <View style={styles.factorInfo}>
-                  <Text style={styles.factorName}>Sleep Quality</Text>
-                  <Text style={styles.factorScore}>85%</Text>
+                    <Text style={styles.factorName}>{factor.name}</Text>
+                    <Text style={[styles.factorScore, { color: factor.color }]}>
+                      {factor.value}%
+              </Text>
                 </View>
               </View>
               <View style={styles.factorProgress}>
-                <View style={[styles.factorProgressBar, { width: '85%', backgroundColor: '#4CD964' }]} />
+                  <View style={[
+                    styles.factorProgressBar,
+                    {
+                      width: `${factor.value}%`,
+                      backgroundColor: factor.color
+                    }
+                  ]} />
               </View>
               <Text style={styles.factorTip}>
-                7-9 hours of quality sleep is mandatory for growth hormone production.
+                  {factor.tip}
               </Text>
-            </View>
-
-            {/* Nutrition */}
-            <View style={styles.factorDetail}>
-              <View style={styles.factorHeader}>
-                <View style={styles.factorIconContainer}>
-                  <Icon name="nutrition" size={24} color="#3B5FE3" />
-                </View>
-                <View style={styles.factorInfo}>
-                  <Text style={styles.factorName}>Nutrition</Text>
-                  <Text style={styles.factorScore}>65%</Text>
-                </View>
               </View>
-              <View style={styles.factorProgress}>
-                <View style={[styles.factorProgressBar, { width: '65%', backgroundColor: '#3B5FE3' }]} />
-              </View>
-              <Text style={styles.factorTip}>
-                Balanced protein, calcium, and vitamin D are essential for bone growth.
-              </Text>
-            </View>
-
-            {/* Exercise */}
-            <View style={styles.factorDetail}>
-              <View style={styles.factorHeader}>
-                <View style={styles.factorIconContainer}>
-                  <Icon name="fitness" size={24} color="#4CD964" />
-                </View>
-                <View style={styles.factorInfo}>
-                  <Text style={styles.factorName}>Exercise</Text>
-                  <Text style={styles.factorScore}>78%</Text>
-                </View>
-              </View>
-              <View style={styles.factorProgress}>
-                <View style={[styles.factorProgressBar, { width: '78%', backgroundColor: '#4CD964' }]} />
-              </View>
-              <Text style={styles.factorTip}>
-                Regular stretching and strength training stimulate bone growth.
-              </Text>
-            </View>
-
-            {/* Posture */}
-            <View style={styles.factorDetail}>
-              <View style={styles.factorHeader}>
-                <View style={styles.factorIconContainer}>
-                  <Icon name="body" size={24} color="#FF3B30" />
-                </View>
-                <View style={styles.factorInfo}>
-                  <Text style={styles.factorName}>Posture</Text>
-                  <Text style={[styles.factorScore, { color: '#FF3B30' }]}>58%</Text>
-                </View>
-              </View>
-              <View style={styles.factorProgress}>
-                <View style={[styles.factorProgressBar, { width: '58%', backgroundColor: '#FF3B30' }]} />
-              </View>
-              <Text style={styles.factorTip}>
-                Proper posture can add 1-2 inches to your apparent height.
-              </Text>
-            </View>
+            ))}
           </View>
         </View>
       )}
@@ -338,6 +440,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontStyle: 'italic',
+  },
+  loadingText: {
+    color: '#666666',
+    fontSize: 14,
+    textAlign: 'center',
+    paddingVertical: 20,
   },
 });
 

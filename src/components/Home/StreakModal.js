@@ -1,18 +1,56 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import ConfettiAnimation from '../UI/ConfettiAnimation';
 
-const StreakModal = ({ visible, onClose }) => {
+const StreakModal = ({ visible, onClose, userProgress }) => {
   if (!visible) return null;
+
+  // Generate real weekly data
+  const generateWeeklyData = () => {
+    const days = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+    const today = new Date();
+    const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+
+    // Get the last 7 days starting from today
+    const weekData = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dayIndex = date.getDay();
+      const dayName = days[dayIndex];
+
+      // For now, we'll show completed days based on the current streak
+      // In a real app, you'd check actual task completion for each day
+      const isCompleted = i === 0; // Only today is completed for now
+
+      weekData.push({
+        day: dayName,
+        isCompleted: isCompleted,
+        date: date
+      });
+    }
+
+    return weekData;
+  };
+
+  const weeklyData = generateWeeklyData();
 
   return (
     <View style={styles.modalOverlay}>
+      {/* Confetti Animation */}
+      <ConfettiAnimation
+        visible={visible}
+        onComplete={() => {}}
+        colors={['#FF9500', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7']}
+      />
+
       <View style={styles.modalCard}>
         {/* Big streak number with flame */}
         <View style={styles.heroSection}>
           <View style={styles.numberContainer}>
             <Icon name="flame" size={60} color="#FF9500" style={styles.flameIcon} />
-            <Text style={styles.bigNumber}>21</Text>
+            <Text style={styles.bigNumber}>{userProgress?.current_streak || 0}</Text>
           </View>
           <Text style={styles.dayText}>day streak!</Text>
         </View>
@@ -21,14 +59,16 @@ const StreakModal = ({ visible, onClose }) => {
         <View style={styles.weekCard}>
           {/* Days of week */}
           <View style={styles.weekDaysContainer}>
-            {['We','Th','Fr','Sa','Su','Mo','Tu'].map((day, idx) => (
-              <View key={day} style={styles.dayContainer}>
-                <Text style={styles.dayLabel}>{day}</Text>
+            {weeklyData.map((dayData, idx) => (
+              <View key={`${dayData.day}-${idx}`} style={styles.dayContainer}>
+                <Text style={styles.dayLabel}>{dayData.day}</Text>
                 <View style={[
                   styles.dayIcon,
-                  (idx === 1 || idx === 3) ? styles.dayIconBlue : styles.dayIconOrange
+                  dayData.isCompleted ? styles.dayIconBlue : styles.dayIconGray
                 ]}>
-                  <Icon name="checkmark" size={12} color="#FFFFFF" />
+                  {dayData.isCompleted && (
+                    <Icon name="checkmark" size={12} color="#FFFFFF" />
+                  )}
                 </View>
               </View>
             ))}
@@ -36,7 +76,7 @@ const StreakModal = ({ visible, onClose }) => {
 
           {/* Message */}
           <Text style={styles.message}>
-            Early Bird! You extended your streak earlier than <Text style={styles.percentText}>89.1%</Text> of learners.
+            Great job! You've completed <Text style={styles.percentText}>{userProgress?.current_day || 1}</Text> days of your 120-day growth plan.
           </Text>
         </View>
 
@@ -133,6 +173,9 @@ const styles = StyleSheet.create({
   },
   dayIconBlue: {
     backgroundColor: '#007AFF',
+  },
+  dayIconGray: {
+    backgroundColor: '#E5E5E5',
   },
   message: {
     color: '#333333',

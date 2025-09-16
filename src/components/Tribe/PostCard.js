@@ -2,9 +2,29 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
-const PostCard = ({ item, onLike, onSave, onComment, onMore }) => {
+const PostCard = ({ item, onLike, onSave, onComment, onMore, onShare }) => {
   const [expanded, setExpanded] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const longText = item.text.length > 200;
+
+  // Profile Avatar Component with fallback
+  const ProfileAvatar = ({ source, name, style }) => {
+    if (imageError || !source || source.includes('placeholder')) {
+      return (
+        <View style={[style, { backgroundColor: '#E0E0E0', justifyContent: 'center', alignItems: 'center' }]}>
+          <Icon name="person" size={20} color="#666666" />
+        </View>
+      );
+    }
+
+    return (
+      <Image
+        source={{ uri: source }}
+        style={style}
+        onError={() => setImageError(true)}
+      />
+    );
+  };
 
   const formatTimestamp = (date) => {
     const now = new Date();
@@ -19,7 +39,11 @@ const PostCard = ({ item, onLike, onSave, onComment, onMore }) => {
     if (diffHour < 24) return `${diffHour}h ago`;
     if (diffDay < 7) return `${diffDay}d ago`;
 
-    return date.toLocaleDateString();
+    // Use manual date formatting instead of toLocaleDateString
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const year = date.getFullYear();
+    return `${month}/${day}/${year}`;
   };
 
   return (
@@ -27,7 +51,7 @@ const PostCard = ({ item, onLike, onSave, onComment, onMore }) => {
       {/* Post Header */}
       <View style={styles.postHeader}>
         <View style={styles.postHeaderLeft}>
-          <Image source={{ uri: item.user.avatar }} style={styles.avatar} />
+          <ProfileAvatar source={item.user.avatar} name={item.user.name} style={styles.avatar} />
           <View>
             <Text style={styles.username}>{item.user.name}</Text>
             <Text style={styles.timestamp}>
@@ -92,7 +116,7 @@ const PostCard = ({ item, onLike, onSave, onComment, onMore }) => {
 
         <TouchableOpacity
           style={styles.footerAction}
-          onPress={onComment}
+          onPress={() => onComment(item.id)}
         >
           <Icon name="chatbubble-outline" size={20} color="#666666" />
           <Text style={styles.actionText}>{item.commentCount}</Text>
@@ -111,6 +135,13 @@ const PostCard = ({ item, onLike, onSave, onComment, onMore }) => {
 
         <TouchableOpacity
           style={styles.footerAction}
+          onPress={() => onShare && onShare(item)}
+        >
+          <Icon name="share-outline" size={20} color="#666666" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.footerAction}
           onPress={() => onMore(item.id)}
         >
           <Icon name="ellipsis-horizontal" size={20} color="#666666" />
@@ -122,10 +153,7 @@ const PostCard = ({ item, onLike, onSave, onComment, onMore }) => {
         <View style={styles.commentsPreview}>
           {item.comments.slice(0, 2).map(comment => (
             <View key={comment.id} style={styles.commentItem}>
-              <Image
-                source={{ uri: comment.user.avatar }}
-                style={styles.commentAvatar}
-              />
+              <ProfileAvatar source={comment.user.avatar} name={comment.user.name} style={styles.commentAvatar} />
               <View style={styles.commentContent}>
                 <Text style={styles.commentText}>
                   <Text style={styles.commentUsername}>{comment.user.name}</Text>{' '}

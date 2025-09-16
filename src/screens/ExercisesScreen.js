@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,8 +19,17 @@ import { NUTRITION_ITEMS } from '../utils/nutritionData';
 import { estimateNutrition, calculateGrowthScore } from '../utils/nutritionDatabase';
 import { LinearGradient } from 'expo-linear-gradient';
 import RecipeLibrary from '../components/Nutrition/RecipeLibrary';
+import TopExerciseOptions from '../components/Exercises/TopExerciseOptions';
+import ListControls from '../components/Exercises/ListControls';
+import ExerciseItem from '../components/Exercises/ExerciseItem';
+import WeeklyProgressView from '../components/Exercises/WeeklyProgressView';
 import * as ImagePicker from 'expo-image-picker';
 import { API_KEYS } from '../config/apiKeys';
+import HapticFeedback from '../utils/hapticFeedback';
+import { CustomExercisePlanService } from '../services/customExercisePlanService';
+import { useUser } from '../contexts/UserContext';
+import SubExercisesView from '../components/Exercises/SubExercisesView';
+import ExerciseDetailView from '../components/Exercises/ExerciseDetailView';
 
 const categories = [{ id: 'all', name: 'All' }, ...CATEGORIES];
 
@@ -49,16 +58,132 @@ const getExerciseImageUrl = (exercise) => {
 };
 
 const ExercisesScreen = ({ navigation }) => {
-  const [view, setView] = useState('hub'); // 'hub' | 'list' | 'detail'
+  const [view, setView] = useState('hub'); // 'hub' | 'list' | 'detail' | 'sub-exercises' | 'weekly-progress'
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedExercise, setSelectedExercise] = useState(null);
+  const [selectedSubExercise, setSelectedSubExercise] = useState(null);
   const [activeTopTab, setActiveTopTab] = useState('train'); // 'train' | 'physical' | 'nutrition'
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('recommended'); // 'recommended' | 'duration' | 'difficulty'
   const [showRecipeLibrary, setShowRecipeLibrary] = useState(false);
   const [barcodeInput, setBarcodeInput] = useState('');
   const [showBarcodeInput, setShowBarcodeInput] = useState(false);
+  const [timer, setTimer] = useState(30);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [customExercisePlan, setCustomExercisePlan] = useState(null);
+  const [loadingCustomPlan, setLoadingCustomPlan] = useState(false);
+  const { userProfile } = useUser();
   const screenHeight = Dimensions.get('window').height;
+
+  // Timer effect
+  useEffect(() => {
+    let interval = null;
+    if (isTimerRunning && timer > 0) {
+      interval = setInterval(() => {
+        setTimer(timer => timer - 1);
+      }, 1000);
+    } else if (timer === 0 && isTimerRunning) {
+      setIsTimerRunning(false);
+      // Timer completed - could trigger completion here
+    }
+    return () => clearInterval(interval);
+  }, [isTimerRunning, timer]);
+
+  const startTimer = () => {
+    setIsTimerRunning(true);
+  };
+
+  const toggleTimer = () => {
+    setIsTimerRunning(prev => !prev);
+  };
+
+  const resetTimer = () => {
+    setIsTimerRunning(false);
+    setTimer(30);
+  };
+
+  const goToPreviousExercise = () => {
+    console.log('Previous clicked', { selectedExercise, selectedSubExercise });
+    if (selectedExercise && selectedExercise.subExercises && selectedSubExercise) {
+      const list = selectedExercise.subExercises;
+      const idx = list.findIndex(se => se.id === selectedSubExercise.id);
+      console.log('Current index:', idx, 'Total exercises:', list.length);
+      if (idx > 0) {
+        const prev = list[idx - 1];
+        console.log('Going to previous:', prev);
+        setSelectedSubExercise(prev);
+        setTimer(prev.duration);
+        setIsTimerRunning(false);
+      } else {
+        console.log('Already at first exercise');
+      }
+    } else {
+      console.log('No sub-exercises available');
+    }
+  };
+
+  const goToNextExercise = () => {
+    console.log('Next clicked', { selectedExercise, selectedSubExercise });
+    if (selectedExercise && selectedExercise.subExercises && selectedSubExercise) {
+      const list = selectedExercise.subExercises;
+      const idx = list.findIndex(se => se.id === selectedSubExercise.id);
+      console.log('Current index:', idx, 'Total exercises:', list.length);
+      if (idx >= 0 && idx < list.length - 1) {
+        const next = list[idx + 1];
+        console.log('Going to next:', next);
+        setSelectedSubExercise(next);
+        setTimer(next.duration);
+        setIsTimerRunning(false);
+      } else {
+        console.log('Last exercise - showing completion modal');
+        setShowCompletionModal(true);
+      }
+    } else {
+      console.log('No sub-exercises - showing completion modal');
+      setShowCompletionModal(true);
+    }
+  };
+
+  const handleExerciseCompletion = () => {
+    setIsTimerRunning(false);
+    setShowCompletionModal(true);
+  };
+
+  // Load custom exercise plan
+  useEffect(() => {
+    const loadCustomExercisePlan = async () => {
+      if (!userProfile?.id) return;
+
+      setLoadingCustomPlan(true);
+      try {
+        const plan = await CustomExercisePlanService.getUserExercisePlan(userProfile.id);
+        setCustomExercisePlan(plan);
+      } catch (error) {
+        console.error('Error loading custom exercise plan:', error);
+        // Set a fallback plan to prevent crashes
+        setCustomExercisePlan({
+          weekly_schedule: {
+            monday: { focus: 'Posture & Alignment', exercises: [] },
+            tuesday: { focus: 'Strength & Mobility', exercises: [] },
+            wednesday: { focus: 'Stretching & Flexibility', exercises: [] },
+            thursday: { focus: 'Core & Stability', exercises: [] },
+            friday: { focus: 'Cardio & Jump Training', exercises: [] },
+            saturday: { focus: 'Recovery & Relaxation', exercises: [] },
+            sunday: { focus: 'Active Rest', exercises: [] }
+          },
+          daily_exercises: {
+            morning: [],
+            evening: []
+          }
+        });
+      } finally {
+        setLoadingCustomPlan(false);
+      }
+    };
+
+    loadCustomExercisePlan();
+  }, [userProfile?.id]);
 
   const filteredExercises = useMemo(() => {
     let data = exercises;
@@ -103,6 +228,9 @@ const ExercisesScreen = ({ navigation }) => {
   }, [selectedCategory, search, sort]);
 
   const openCategory = (id) => {
+    // Add haptic feedback for category selection
+    HapticFeedback.medium();
+
     if (activeTopTab === 'nutrition') {
       // Handle nutrition-specific categories
       if (id === 'recipes') {
@@ -118,7 +246,24 @@ const ExercisesScreen = ({ navigation }) => {
   };
 
   const openExercise = (item) => {
-    setSelectedExercise(item._full ? item._full : item);
+    // Add haptic feedback for exercise selection
+    HapticFeedback.light();
+    const exercise = item._full ? item._full : item;
+    setSelectedExercise(exercise);
+
+    // Check if exercise has sub-exercises
+    if (exercise.subExercises && exercise.subExercises.length > 0) {
+      setView('sub-exercises');
+    } else {
+      setView('detail');
+    }
+  };
+
+  const openSubExercise = (subExercise) => {
+    // Add haptic feedback for sub-exercise selection
+    HapticFeedback.light();
+    setSelectedSubExercise(subExercise);
+    setTimer(subExercise.duration);
     setView('detail');
   };
 
@@ -345,16 +490,34 @@ const ExercisesScreen = ({ navigation }) => {
           style={styles.backButton}
         onPress={() => {
           if (view === 'hub') {
-            navigation && navigation.goBack && navigation.goBack();
+            // Navigate to home page when in hub view
+            if (navigation && navigation.navigate) {
+              navigation.navigate('home');
+            } else if (navigation && navigation.goBack) {
+              navigation.goBack();
+            }
           } else if (view === 'list') {
+            setView('hub');
+          } else if (view === 'weekly-progress') {
             setView('hub');
           } else if (view === 'detail') {
             // If we're in nutrition detail view, go back to nutrition hub
             if (activeTopTab === 'nutrition') {
               setView('hub');
+            } else if (selectedSubExercise) {
+              // If we're in a sub-exercise detail, go back to sub-exercises
+              setView('sub-exercises');
+              setSelectedSubExercise(null);
             } else {
-              setView('list');
+              // Check if we came from weekly progress or regular list
+              if (activeTopTab === 'physical') {
+                setView('hub'); // Go back to hub since weekly progress is shown in physical tab
+              } else {
+                setView('list');
+              }
             }
+          } else if (view === 'sub-exercises') {
+            setView('list');
           }
         }}
         >
@@ -363,8 +526,11 @@ const ExercisesScreen = ({ navigation }) => {
       <Text style={styles.headerTitle}>
         {view === 'hub' ? 'TRAIN' :
          view === 'list' ? (categories.find(c => c.id === selectedCategory)?.name || 'EXERCISES') :
+         view === 'weekly-progress' ? 'MY PROGRESS' :
+         view === 'sub-exercises' ? (selectedExercise?.name || 'SUB-EXERCISES') :
          view === 'detail' && activeTopTab === 'nutrition' ? (NUTRITION_CATEGORIES.find(cat => cat.id === selectedCategory)?.name || 'NUTRITION') :
-         (selectedExercise?.name || 'DETAIL')}
+         view === 'detail' ? '1/7' :
+         'DETAIL'}
       </Text>
       <TouchableOpacity
         style={styles.filterButton}
@@ -387,54 +553,29 @@ const ExercisesScreen = ({ navigation }) => {
       {['train','physical','nutrition'].map(tab => (
             <TouchableOpacity
           key={tab}
-          onPress={() => setActiveTopTab(tab)}
+          onPress={() => {
+            HapticFeedback.selection();
+            setActiveTopTab(tab);
+          }}
           style={[styles.topTab, activeTopTab === tab && styles.topTabActive]}
         >
           <Text style={[styles.topTabText, activeTopTab === tab && styles.topTabTextActive]}>
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {tab === 'physical' ? 'My Exercise' : tab.charAt(0).toUpperCase() + tab.slice(1)}
               </Text>
         </TouchableOpacity>
       ))}
     </View>
   );
 
-  const ProgressCard = (
-    <View style={styles.progressCard}>
-      <View style={styles.progressRow}>
-        <Text style={styles.progressLabel}>Progression</Text>
-        <Text style={styles.progressPercent}>0%</Text>
-      </View>
-      <View style={styles.progressBarTrack}>
-        <View style={[styles.progressBarFill, { width: '0%' }]} />
-      </View>
-      <TouchableOpacity style={styles.primaryCta}>
-        <Text style={styles.primaryCtaText}>Start my program  →</Text>
-      </TouchableOpacity>
-    </View>
-  );
 
-  // Top 6 exercise options section
-  const TopExerciseOptions = (
-    <View style={styles.topOptionsContainer}>
-      <Text style={styles.topOptionsTitle}>All Exercises</Text>
-      <View style={styles.topOptionsGrid}>
-        {[
-          { id: 'all', name: 'All Exercises', icon: 'fitness' },
-          { id: 'beginner', name: 'Beginner', icon: 'play-circle' },
-          { id: 'intermediate', name: 'Intermediate', icon: 'trending-up' },
-          { id: 'advanced', name: 'Advanced', icon: 'trophy' },
-          { id: 'quick', name: 'Quick Workouts', icon: 'flash' },
-          { id: 'favorites', name: 'Favorites', icon: 'heart' },
-        ].map(option => (
-          <TouchableOpacity key={option.id} style={styles.topOptionCard} onPress={() => openCategory(option.id)}>
-            <View style={styles.topOptionIconHolder}>
-              <Icon name={option.icon} size={20} color="#000000" />
-            </View>
-            <Text style={styles.topOptionText} numberOfLines={2}>{option.name}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
+  // Top 6 exercise options section (extracted)
+  const TopExerciseOptionsView = (
+    <TopExerciseOptions
+      styles={styles}
+      HapticFeedback={HapticFeedback}
+      onPressToday={() => setActiveTopTab('physical')}
+      onOpenCategory={openCategory}
+    />
   );
 
   const CategoryGrid = (
@@ -463,28 +604,121 @@ const ExercisesScreen = ({ navigation }) => {
     </View>
   );
 
-  const PhysicalContent = (
-    <View style={styles.gridContainer}>
-      <Text style={styles.gridTitle}>PHYSICAL THERAPY</Text>
-      <View style={styles.grid}>
-        {[
-          { id: 'posture-correction', name: 'Posture Correction', icon: 'body' },
-          { id: 'spinal-decompression', name: 'Spinal Decompression', icon: 'swap-vertical' },
-          { id: 'flexibility', name: 'Flexibility', icon: 'fitness' },
-          { id: 'strength-building', name: 'Strength Building', icon: 'barbell' },
-          { id: 'balance-training', name: 'Balance Training', icon: 'walk' },
-          { id: 'recovery', name: 'Recovery', icon: 'medkit-outline' }
-        ].map(cat => (
-          <TouchableOpacity key={cat.id} style={styles.gridCard} onPress={() => openCategory(cat.id)}>
-            <View style={styles.gridIconHolder}>
-              <Icon name={cat.icon} size={20} color="#000000" />
-            </View>
-            <Text style={styles.gridCardText} numberOfLines={2}>{cat.name}</Text>
+  // Custom Exercise Plan Content
+  const CustomExercisePlanContent = () => {
+    if (loadingCustomPlan) {
+      return (
+        <View style={styles.gridContainer}>
+          <Text style={styles.gridTitle}>MY EXERCISE PLAN</Text>
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading your custom plan...</Text>
+          </View>
+        </View>
+      );
+    }
+
+    if (!customExercisePlan) {
+      return (
+        <View style={styles.gridContainer}>
+          <Text style={styles.gridTitle}>MY EXERCISE PLAN</Text>
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>Unable to load exercise plan</Text>
+          </View>
+        </View>
+      );
+    }
+
+    let todayExercises;
+    let currentPhase = 'Foundation';
+
+    try {
+      todayExercises = CustomExercisePlanService.getTodayExercises(customExercisePlan);
+      currentPhase = customExercisePlan.weekly_schedule ?
+        (customExercisePlan.weekly_schedule.monday?.exercises?.[0]?.difficulty === 'Beginner' ? 'Foundation' :
+         customExercisePlan.weekly_schedule.monday?.exercises?.[0]?.difficulty === 'Intermediate' ? 'Building' : 'Advancing') : 'Foundation';
+    } catch (error) {
+      console.error('Error getting today exercises:', error);
+      todayExercises = {
+        weekly: [],
+        morning: [],
+        evening: [],
+        focus: 'Posture & Alignment'
+      };
+    }
+
+    return (
+      <View style={styles.gridContainer}>
+        <Text style={styles.gridTitle}>MY EXERCISE PLAN</Text>
+
+        {/* Phase Badge */}
+        <View style={[styles.phaseBadge, { display: 'none' }]} />
+
+        {/* Today's Daily Exercises */}
+        <View style={styles.dailyExercisesSection}>
+          <Text style={styles.sectionTitle}>Today's Exercises</Text>
+          <Text style={styles.sectionSubtitle}>
+            {todayExercises.length} exercises selected for today • {currentPhase} Phase
+          </Text>
+
+          {todayExercises.map((exercise, index) => (
+            <TouchableOpacity
+              key={exercise.id}
+              style={styles.dailyExerciseCard}
+              onPress={() => {
+                setSelectedExercise(exercise);
+                setView('detail');
+              }}
+            >
+              <View style={styles.dailyExerciseContent}>
+                <View style={styles.dailyExerciseInfo}>
+                  <Text style={styles.dailyExerciseNumber}>{index + 1}</Text>
+                  <View style={styles.dailyExerciseDetails}>
+                    <Text style={styles.dailyExerciseName}>{exercise.name}</Text>
+                    <Text style={styles.dailyExerciseMeta}>
+                      {exercise.durationMin} min • {exercise.difficulty}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.dailyExerciseActions}>
+                  <Icon name="chevron-forward" size={20} color="#666666" />
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => {
+            setSelectedCategory('all');
+            setView('list');
+          }}>
+            <Icon name="list" size={20} color="#3B5FE3" />
+            <Text style={styles.actionButtonText}>Browse All</Text>
           </TouchableOpacity>
-        ))}
+          <TouchableOpacity style={[styles.actionButton, styles.secondaryButton]} onPress={async () => {
+            // Refresh daily exercises
+            if (userProfile?.id) {
+              try {
+                const updatedPlan = await CustomExercisePlanService.generateCustomExercisePlan(userProfile.id);
+                await CustomExercisePlanService.updateUserExercisePlan(userProfile.id, {
+                  daily_exercises: updatedPlan.dailyExercises,
+                  last_updated: updatedPlan.lastUpdated
+                });
+                setCustomExercisePlan(updatedPlan);
+              } catch (error) {
+                console.error('Error refreshing plan:', error);
+              }
+            }
+          }}>
+            <Icon name="refresh" size={20} color="#10B981" />
+            <Text style={[styles.actionButtonText, {color: '#10B981'}]}>Refresh Plan</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   const NutritionContent = (
     <View style={styles.gridContainer}>
@@ -545,84 +779,37 @@ const ExercisesScreen = ({ navigation }) => {
     </View>
   );
 
-  const ListControls = (
-    <View style={styles.listControls}>
-      <TextInput
-        placeholder="Search exercises"
-        placeholderTextColor="#888888"
-        style={styles.searchInput}
-        value={search}
-        onChangeText={setSearch}
-      />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: 8 }}>
-        {[
-          { id: 'recommended', label: 'Recommended' },
-          { id: 'duration', label: 'Duration' },
-          { id: 'difficulty', label: 'Difficulty' },
-        ].map(opt => (
-          <TouchableOpacity key={opt.id} onPress={() => setSort(opt.id)} style={[styles.sortChip, sort === opt.id && styles.sortChipActive]}>
-            <Text style={[styles.sortChipText, sort === opt.id && styles.sortChipTextActive]}>{opt.label}</Text>
-              </TouchableOpacity>
-            ))}
-        </ScrollView>
-        </View>
+  const ListControlsView = (
+    <ListControls styles={styles} search={search} setSearch={setSearch} sort={sort} setSort={setSort} />
   );
 
-  const ExerciseItem = ({ item }) => (
-    <TouchableOpacity style={styles.exerciseCard} onPress={() => openExercise(item)}>
-      {/* Top-right icon badge */}
-      <View style={styles.iconBadgeTop}>
-        <Icon name={item.icon || 'fitness'} size={16} color="#000000" />
-      </View>
-      <View style={styles.exerciseThumb}>
-        <Image source={getExerciseImageUrl(item)} style={styles.exerciseThumbImg} resizeMode="cover" />
-            </View>
-            <View style={styles.exerciseContent}>
-              <Text style={styles.exerciseName}>{item.name}</Text>
-        <Text style={[styles.exerciseImpact, item.highImpact ? styles.highImpact : styles.mediumImpact]}>
-                {item.impact}
-              </Text>
-        <Text style={styles.exerciseDetails}>{item.duration} • {item.difficulty}</Text>
-            </View>
-            <Icon name="chevron-forward" size={20} color="#666666" />
-          </TouchableOpacity>
+  const renderExerciseItem = ({ item }) => (
+    <ExerciseItem styles={styles} item={item} onPress={openExercise} getExerciseImageUrl={getExerciseImageUrl} />
   );
 
-  const DetailView = selectedExercise && (
-    <ScrollView contentContainerStyle={styles.detailContent} showsVerticalScrollIndicator={false}>
-      <View style={styles.detailHero}>
-        <Icon name="image" size={36} color="#FFFFFF" />
-      </View>
-      <Text style={styles.detailTitle}>{selectedExercise.name}</Text>
-      <View style={styles.detailChipsRow}>
-        <View style={styles.detailChip}><Text style={styles.detailChipText}>{selectedExercise.difficulty}</Text></View>
-        <View style={styles.detailChip}><Text style={styles.detailChipText}>{selectedExercise.durationMin} min</Text></View>
-      </View>
-      <Text style={styles.sectionHeading}>Benefits</Text>
-      <View style={styles.bullets}>
-        {(selectedExercise.benefits || []).slice(0,3).map((b, i) => (
-          <Text key={i} style={styles.bullet}>• {b}</Text>
-        ))}
-      </View>
-      <Text style={styles.sectionHeading}>Target Muscles</Text>
-      <View style={styles.muscleChips}>
-        {(selectedExercise.targetMuscles || []).slice(0,6).map(m => (
-          <View key={m} style={styles.muscleChip}><Text style={styles.muscleChipText}>{m}</Text></View>
-        ))}
-      </View>
-      <Text style={styles.sectionHeading}>Steps</Text>
-      <View style={styles.steps}>
-        {(selectedExercise.steps || []).map((s, idx) => (
-          <View key={idx} style={styles.stepRow}>
-            <View style={styles.stepNum}><Text style={styles.stepNumText}>{idx + 1}</Text></View>
-            <Text style={styles.stepText}>{s}</Text>
-          </View>
-        ))}
-      </View>
-      <TouchableOpacity style={styles.primaryCta}>
-        <Text style={styles.primaryCtaText}>Add to Plan</Text>
-      </TouchableOpacity>
-    </ScrollView>
+  // Extracted views
+  const SubExercisesViewContent = selectedExercise && selectedExercise.subExercises && (
+    <SubExercisesView
+      styles={styles}
+      selectedExercise={selectedExercise}
+      getExerciseImageUrl={getExerciseImageUrl}
+      openSubExercise={openSubExercise}
+    />
+  );
+
+  const DetailViewContent = (selectedSubExercise || selectedExercise) && (
+    <ExerciseDetailView
+      styles={styles}
+      selectedExercise={selectedExercise}
+      selectedSubExercise={selectedSubExercise}
+      getExerciseImageUrl={getExerciseImageUrl}
+      timer={timer}
+      isTimerRunning={isTimerRunning}
+      onTogglePlay={toggleTimer}
+      onReset={resetTimer}
+      onPrevious={goToPreviousExercise}
+      onNext={goToNextExercise}
+    />
   );
 
   const NutritionDetailView = selectedCategory && (
@@ -724,34 +911,65 @@ const ExercisesScreen = ({ navigation }) => {
           {view === 'hub' && (
         <ScrollView showsVerticalScrollIndicator={false}>
           {TopTabs}
-          {ProgressCard}
-          {activeTopTab === 'train' && TopExerciseOptions}
+          {activeTopTab === 'train' && TopExerciseOptionsView}
           {activeTopTab === 'train' && CategoryGrid}
-          {activeTopTab === 'physical' && PhysicalContent}
+          {activeTopTab === 'physical' && (
+            <WeeklyProgressView
+              onExerciseSelect={(exercise) => {
+                setSelectedExercise(exercise);
+                setView('detail');
+              }}
+            />
+          )}
           {activeTopTab === 'nutrition' && NutritionContent}
         </ScrollView>
       )}
 
       {view === 'list' && (
         <>
-          {ListControls}
+          {ListControlsView}
           <FlatList
             data={filteredExercises}
             keyExtractor={(item) => item.id}
             contentContainerStyle={[styles.exerciseListContent, { paddingBottom: screenHeight > 700 ? 100 : 40 }]}
-            renderItem={ExerciseItem}
+            renderItem={renderExerciseItem}
           />
         </>
       )}
 
-          {view === 'detail' && (activeTopTab === 'nutrition' ? NutritionDetailView : DetailView)}
+          {view === 'sub-exercises' && SubExercisesViewContent}
+          {view === 'detail' && (activeTopTab === 'nutrition' ? NutritionDetailView : DetailViewContent)}
 
-          {/* Floating Action Button for Chat */}
-      <TouchableOpacity style={styles.fabButton}>
-        <View style={styles.fabGradient}>
-              <Icon name="chatbubble" size={24} color="#FFFFFF" />
-        </View>
-      </TouchableOpacity>
+
+          {/* Completion Modal */}
+          {showCompletionModal && (
+            <View style={styles.completionModalOverlay}>
+              <View style={styles.completionModal}>
+                <View style={styles.completionIconContainer}>
+                  <Icon name="checkmark-circle" size={80} color="#4CD964" />
+                </View>
+                <Text style={styles.completionTitle}>Keep it up!</Text>
+                <Text style={styles.completionMessage}>
+                  Great job completing {selectedSubExercise?.name || selectedExercise?.name}! You're one step closer to your height goals.
+                </Text>
+                <TouchableOpacity
+                  style={styles.completionButton}
+                  onPress={() => {
+                    setShowCompletionModal(false);
+                    if (selectedSubExercise) {
+                      setView('sub-exercises');
+                      setSelectedSubExercise(null);
+                    } else {
+                      setView('list');
+                    }
+                    resetTimer();
+                  }}
+                >
+                  <Text style={styles.completionButtonText}>Continue</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </>
       )}
     </SafeAreaView>
@@ -806,42 +1024,6 @@ const styles = StyleSheet.create({
   topTabTextActive: {
     color: '#FFFFFF',
   },
-  progressCard: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  progressRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  progressLabel: {
-    color: '#000000',
-    fontWeight: '600',
-  },
-  progressPercent: {
-    color: '#000000',
-    fontWeight: '600',
-  },
-  progressBarTrack: {
-    height: 10,
-    backgroundColor: 'rgba(0,0,0,0.08)',
-    borderRadius: 6,
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#4CD964',
-  },
   primaryCta: {
     backgroundColor: '#000000',
     paddingVertical: 12,
@@ -854,13 +1036,14 @@ const styles = StyleSheet.create({
   },
   topOptionsContainer: {
     marginTop: 16,
+    marginBottom: 24,
     paddingHorizontal: 16,
   },
   topOptionsTitle: {
     color: '#000000',
     fontSize: 18,
     fontWeight: '700',
-    marginBottom: 12,
+    marginBottom: 18,
   },
   topOptionsGrid: {
     flexDirection: 'row',
@@ -895,6 +1078,18 @@ const styles = StyleSheet.create({
     color: '#000000',
     fontSize: 11,
     fontWeight: '600',
+  },
+  todayCard: {
+    backgroundColor: '#3B5FE3',
+    borderWidth: 2,
+    borderColor: '#3B5FE3',
+  },
+  todayIconHolder: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  todayText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   gridContainer: {
     marginTop: 16,
@@ -1022,92 +1217,112 @@ const styles = StyleSheet.create({
   exerciseCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     marginBottom: 16,
+    marginHorizontal: 4,
     overflow: 'hidden',
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  iconBadgeTop: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: 'rgba(0,0,0,0.08)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1,
-  },
-  exerciseImagePlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    margin: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
   },
   exerciseThumb: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
-    margin: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    width: 90,
+    height: 90,
+    borderRadius: 16,
+    margin: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
     overflow: 'hidden',
+    position: 'relative',
   },
   exerciseThumbImg: {
     width: '100%',
     height: '100%',
   },
+  exerciseImageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    padding: 8,
+  },
+  difficultyBadge: {
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  difficultyBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   exerciseContent: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 16,
+    paddingRight: 16,
+  },
+  exerciseHeader: {
+    marginBottom: 8,
   },
   exerciseName: {
     color: '#000000',
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: 6,
+    lineHeight: 22,
+  },
+  impactContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  impactDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+  highImpactDot: {
+    backgroundColor: '#4CD964',
+  },
+  mediumImpactDot: {
+    backgroundColor: '#000000',
   },
   exerciseImpact: {
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 4,
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   highImpact: {
     color: '#4CD964',
   },
   mediumImpact: {
-    color: '#3B5FE3',
+    color: '#000000',
+  },
+  exerciseFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  durationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   exerciseDetails: {
     color: '#666666',
     fontSize: 14,
-  },
-  fabButton: {
-    position: 'absolute',
-    right: 20,
-    bottom: 60,
-    alignItems: 'center',
-  },
-  fabGradient: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#000000',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    fontWeight: '500',
+    marginLeft: 4,
   },
   fabText: {
     color: '#FFFFFF',
@@ -1116,16 +1331,201 @@ const styles = StyleSheet.create({
   },
   // Detail view
   detailContent: {
-    padding: 16,
+    padding: 0,
     paddingBottom: 48,
+    minHeight: '100%',
+    flexGrow: 1,
+
   },
-  detailHero: {
-    height: 180,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.08)',
+  // Exercise Hero Section
+  exerciseHeroContainer: {
+    height: 250,
+    position: 'relative',
+    marginBottom: 24,
+  },
+  exerciseHeroImage: {
+    width: '100%',
+    height: '100%',
+  },
+  exerciseHeroOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 20,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+  },
+  exerciseHeroTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  exerciseHeroChips: {
+    flexDirection: 'row',
+  },
+  heroChip: {
+    backgroundColor: '#F0F0F0',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginRight: 8,
+  },
+  heroChipText: {
+    color: '#000000',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  // Timer Section
+  timerSection: {
+    paddingHorizontal: 20,
+    marginBottom: 32,
+    alignItems: 'center',
+  },
+  timerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000000',
+    marginBottom: 20,
+  },
+  timerContainer: {
+    alignItems: 'center',
+  },
+  timerCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#F8F9FA',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  timerText: {
+    fontSize: 36,
+    fontWeight: '700',
+    color: '#000000',
+  },
+  timerLabel: {
+    fontSize: 12,
+    color: '#666666',
+    marginTop: -4,
+  },
+  timerControls: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  timerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    minWidth: 100,
+    justifyContent: 'center',
+  },
+  startButton: {
+    backgroundColor: '#000000',
+  },
+  resetButton: {
+    backgroundColor: '#F8F9FA',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  timerButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  // New Circular Timer Styles
+  exerciseHeader: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  exerciseCounter: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000000',
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  mainTimerSection: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  circularTimerContainer: {
+    position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 16,
+  },
+  timerSvg: {
+    position: 'absolute',
+  },
+  exerciseImageContainer: {
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    overflow: 'hidden',
+    backgroundColor: '#F8F9FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  exerciseImage: {
+    width: '100%',
+    height: '100%',
+  },
+  exerciseName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  timerDisplay: {
+    fontSize: 48,
+    fontWeight: '700',
+    color: '#000000',
+    textAlign: 'center',
     marginBottom: 12,
+  },
+  controlButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#000000',
+  },
+  // Steps Section
+  stepsSection: {
+    paddingHorizontal: 20,
+    marginBottom: 32,
+  },
+  // Benefits Section
+  benefitsSection: {
+    paddingHorizontal: 20,
+    marginBottom: 32,
+  },
+  // Exercise Info Section
+  exerciseInfoSection: {
+    paddingHorizontal: 20,
+    marginBottom: 32,
   },
   detailTitle: {
     color: '#000000',
@@ -1158,6 +1558,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 12,
     marginBottom: 8,
+    fontSize: 18,
   },
   bullets: {
     marginBottom: 12,
@@ -1208,6 +1609,193 @@ const styles = StyleSheet.create({
   stepText: {
     flex: 1,
     color: '#000000',
+  },
+  // Completion Modal
+  completionModalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  completionModal: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 32,
+    marginHorizontal: 20,
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 16,
+  },
+  completionIconContainer: {
+    marginBottom: 16,
+  },
+  completionTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#000000',
+    marginBottom: 12,
+  },
+  completionMessage: {
+    fontSize: 16,
+    color: '#666666',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  completionButton: {
+    backgroundColor: '#000000',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  completionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  // Custom Exercise Plan Styles
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: '#666666',
+    fontSize: 16,
+  },
+  errorContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  errorText: {
+    color: '#FF6B6B',
+    fontSize: 16,
+  },
+  phaseBadge: {
+    backgroundColor: '#000000',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    alignSelf: 'flex-start',
+    marginBottom: 16,
+  },
+  phaseText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  todayFocus: {
+    backgroundColor: '#F8F9FA',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  todayFocusTitle: {
+    fontSize: 14,
+    color: '#666666',
+    marginBottom: 4,
+  },
+  todayFocusText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#000000',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#000000',
+    marginBottom: 12,
+  },
+  weeklySchedule: {
+    marginBottom: 20,
+  },
+  weeklyScroll: {
+    paddingLeft: 0,
+  },
+  dayCard: {
+    backgroundColor: '#F8F9FA',
+    padding: 12,
+    borderRadius: 12,
+    marginRight: 12,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  dayName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 4,
+  },
+  dayFocus: {
+    fontSize: 10,
+    color: '#666666',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  dayCount: {
+    fontSize: 10,
+    color: '#000000',
+    fontWeight: '600',
+  },
+  dailyRoutines: {
+    marginBottom: 20,
+  },
+  routineRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  routineCard: {
+    backgroundColor: '#F8F9FA',
+    padding: 16,
+    borderRadius: 12,
+    flex: 1,
+    marginHorizontal: 6,
+    alignItems: 'center',
+  },
+  routineTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000000',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  routineCount: {
+    fontSize: 12,
+    color: '#666666',
+  },
+  quickActions: {
+    gap: 12,
+  },
+  actionButton: {
+    backgroundColor: '#000000',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  secondaryButton: {
+    backgroundColor: '#F8F9FA',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  actionButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    marginLeft: 8,
   },
   // Scanner styles
   scannerSection: {
@@ -1475,6 +2063,140 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  // Sub-exercises styles
+  subExercisesSection: {
+    paddingHorizontal: 20,
+    marginBottom: 32,
+  },
+  sectionSubheading: {
+    fontSize: 14,
+    color: '#666666',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  subExerciseCard: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  subExerciseContent: {
+    flex: 1,
+  },
+  subExerciseHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  subExerciseNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#000000',
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 32,
+    marginRight: 12,
+  },
+  subExerciseInfo: {
+    flex: 1,
+  },
+  subExerciseName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 4,
+  },
+  subExerciseDescription: {
+    fontSize: 14,
+    color: '#666666',
+    lineHeight: 18,
+  },
+  subExerciseDuration: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginLeft: 12,
+  },
+  subExerciseDurationText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#000000',
+  },
+
+  // Daily Exercise Styles
+  dailyExercisesSection: {
+    marginBottom: 24,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#666666',
+    marginBottom: 16,
+    fontWeight: '500',
+  },
+  dailyExerciseCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+  },
+  dailyExerciseContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  dailyExerciseInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  dailyExerciseNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#000000',
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 32,
+    marginRight: 12,
+  },
+  dailyExerciseDetails: {
+    flex: 1,
+  },
+  dailyExerciseName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 4,
+  },
+  dailyExerciseMeta: {
+    fontSize: 14,
+    color: '#666666',
+    fontWeight: '500',
+  },
+  dailyExerciseActions: {
+    paddingLeft: 12,
   },
 });
 
