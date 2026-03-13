@@ -29,8 +29,14 @@ yarn-error.*
 .DS_Store
 *.pem
 
+# Service account / credentials JSON
+*firebase-adminsdk-*.json
+
 # local env files
 .env*.local
+.env
+.env.production
+.env.development
 
 # typescript
 *.tsbuildinfo
@@ -82,10 +88,6 @@ jspm_packages/
 
 # Yarn Integrity file
 .yarn-integrity
-
-# dotenv environment variables file
-.env
-.env.test
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
