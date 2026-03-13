@@ -8,14 +8,22 @@ import {
   ScrollView,
   Alert,
   Switch,
-  Dimensions
+  Dimensions,
+  Modal,
+  Platform,
+  Image,
+  StatusBar,
+  Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/Ionicons';
+import Icon from '../components/UI/Icon';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useUser } from '../contexts/UserContext';
 import { AuthService } from '../services/auth';
 import HapticFeedback from '../utils/hapticFeedback';
+import * as Haptics from 'expo-haptics';
+
+const { width: screenWidth } = Dimensions.get('window');
 import ProfileHeader from '../components/Profile/ProfileHeader';
 import ProfileStats from '../components/Profile/ProfileStats';
 import ProfileProgress from '../components/Profile/ProfileProgress';
@@ -24,21 +32,61 @@ import ProfileLifestyle from '../components/Profile/ProfileLifestyle';
 import ProfileSettings from '../components/Profile/ProfileSettings';
 import ProfileSubscription from '../components/Profile/ProfileSubscription';
 import ProfileAbout from '../components/Profile/ProfileAbout';
+import FeedbackModal from '../components/Profile/FeedbackModal';
+import { DatabaseService } from '../services/database';
+import SubscriptionService from '../services/subscriptionService';
+import Purchases from 'react-native-purchases';
+import { SeedRetentionService } from '../services/seedRetentionService';
 
 const { width, height } = Dimensions.get('window');
 
-const PersonalProfileScreen = ({ navigation, onLogout }) => {
+const PersonalProfileScreen = ({ navigation, onLogout, onNavigateToProgress, onNavigateToTab }) => {
   const { userProfile, userProgress, loading, updateUserProfile } = useUser();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [isPremium, setIsPremium] = useState(false);
-  const [showNotificationTest, setShowNotificationTest] = useState(false);
+  const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [personalDetailsModalVisible, setPersonalDetailsModalVisible] = useState(false);
+  const [lifestyleModalVisible, setLifestyleModalVisible] = useState(false);
+  const [seedRetentionStreak, setSeedRetentionStreak] = useState(0);
   const insets = useSafeAreaInsets();
+
+  const tabs = [
+    { id: 'home', label: 'Me', icon: 'home' },
+    { id: 'exercises', label: 'Hub', icon: 'barbell' },
+    { id: 'daily', label: 'Today', icon: 'calendar' },
+    { id: 'tribe', label: 'Tribe', icon: 'people' },
+  ];
+
+  const handleTabPress = (tabId) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (onNavigateToTab) {
+      onNavigateToTab(tabId);
+    } else if (navigation && navigation.goBack) {
+      navigation.goBack();
+    }
+  };
 
   useEffect(() => {
     if (userProfile) {
-      setIsPremium(userProfile.subscription_status === 'active');
+      // Check premium_status from database (boolean) - subscription_status is not used
+      setIsPremium(userProfile.premium_status === true);
     }
   }, [userProfile]);
+
+  // Fetch seed retention streak
+  useEffect(() => {
+    const fetchSeedRetentionStreak = async () => {
+      if (userProfile?.id && userProfile?.gender === 'male') {
+        try {
+          const status = await SeedRetentionService.getSeedRetentionStatus(userProfile.id);
+          setSeedRetentionStreak(status.currentStreak);
+        } catch (error) {
+          console.error('Error fetching seed retention streak:', error);
+        }
+      }
+    };
+    fetchSeedRetentionStreak();
+  }, [userProfile?.id, userProfile?.gender]);
 
   const handleSignOut = () => {
     Alert.alert(
@@ -65,28 +113,111 @@ const PersonalProfileScreen = ({ navigation, onLogout }) => {
     );
   };
 
-  const handleCancelSubscription = () => {
-    Alert.alert(
-      'Cancel Subscription',
-      'Are you sure you want to cancel your premium subscription? You will lose access to premium features.',
-      [
-        { text: 'Keep Subscription', style: 'cancel' },
-        {
-          text: 'Cancel Subscription',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // TODO: Implement subscription cancellation logic
-              Alert.alert('Success', 'Your subscription has been cancelled.');
-              setIsPremium(false);
-            } catch (error) {
-              console.error('Cancel subscription error:', error);
-              Alert.alert('Error', 'Failed to cancel subscription. Please try again.');
-            }
-          }
+  const handleAddWidgetInfo = () => {
+    if (Platform.OS === 'ios') {
+      Alert.alert(
+        'Add PeakHeight widget',
+        [
+          '1. Go to your iPhone Home Screen.',
+          '2. Long‑press on an empty area until apps start jiggling.',
+          '3. Tap the + button in the top‑left corner.',
+          '4. Search for "PeakHeight".',
+          '5. Choose the "PeakHeight Today" widget and tap Add Widget.',
+        ].join('\n'),
+        [{ text: 'OK' }],
+      );
+    } else {
+      Alert.alert(
+        'Widgets on iOS only',
+        'Home‑screen widgets are currently available on iOS. You can still use all PeakHeight features inside the app.',
+        [{ text: 'OK' }],
+      );
+    }
+  };
+
+
+  const handleCancelSubscription = async () => {
+    try {
+      // Initialize SubscriptionService if needed
+      await SubscriptionService.initialize();
+      
+      // Try to use RevenueCat's showManageSubscriptions (iOS only)
+      if (Platform.OS === 'ios') {
+        try {
+          await Purchases.showManageSubscriptions();
+          return;
+        } catch (rcError) {
+          console.log('RevenueCat showManageSubscriptions not available, using fallback URL:', rcError);
         }
-      ]
-    );
+      }
+      
+      // Fallback: Open platform-specific subscription management URL
+      let url;
+      if (Platform.OS === 'ios') {
+        url = 'https://apps.apple.com/account/subscriptions';
+      } else {
+        // Android - use package name from app.json
+        const packageName = 'com.peakheight.app';
+        url = `https://play.google.com/store/account/subscriptions?package=${packageName}`;
+      }
+      
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+        Alert.alert(
+          'Manage Subscription',
+          'You will be redirected to manage your subscription. Your subscription will remain active until the end of the current billing period.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Manage Subscription',
+          Platform.OS === 'ios' 
+            ? 'Please go to Settings > [Your Name] > Subscriptions to manage your subscription.'
+            : 'Please go to Google Play Store > Account > Subscriptions to manage your subscription.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Cancel subscription error:', error);
+      Alert.alert(
+        'Manage Subscription',
+        Platform.OS === 'ios'
+          ? 'Please go to Settings > [Your Name] > Subscriptions to cancel your subscription.'
+          : 'Please go to Google Play Store > Account > Subscriptions to cancel your subscription.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const handleFeedbackSubmit = async (feedbackData) => {
+    if (!userProfile?.id) {
+      Alert.alert('Error', 'Please log in to send feedback');
+      return;
+    }
+
+    try {
+      setFeedbackLoading(true);
+      const { data, error } = await DatabaseService.submitFeedback(
+        userProfile.id,
+        feedbackData.feedbackType,
+        feedbackData.message,
+        feedbackData.title
+      );
+
+      if (error) {
+        Alert.alert('Error', `Failed to submit feedback: ${error}`);
+        return;
+      }
+
+      Alert.alert('Success', 'Thank you for your feedback! We appreciate your input.');
+      setFeedbackModalVisible(false);
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      Alert.alert('Error', `Failed to submit feedback: ${error.message || error}`);
+    } finally {
+      setFeedbackLoading(false);
+    }
   };
 
   const formatDate = (dateString) => {
@@ -142,84 +273,323 @@ const PersonalProfileScreen = ({ navigation, onLogout }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header + Hero */}
-        <ProfileHeader
-          styles={styles}
-          insets={insets}
-          isPremium={isPremium}
-          userProfile={userProfile}
-          HapticFeedback={HapticFeedback}
-          onBack={() => navigation.goBack()}
-        />
-
-        {/* Stats Cards */}
-        <ProfileStats styles={styles} getDaysOnJourney={getDaysOnJourney} userProgress={userProgress} />
-        <ProfileProgress
-          styles={styles}
-          userProfile={userProfile}
-          formatHeight={formatHeight}
-          calculateHeightProgress={calculateHeightProgress}
-        />
-
-        {/* Personal Information */}
-        <ProfileDetails
-          styles={styles}
-          userProfile={userProfile}
-          formatDate={formatDate}
-          formatWeight={formatWeight}
-        />
-
-        {/* Lifestyle Information */}
-        <ProfileLifestyle styles={styles} userProfile={userProfile} />
-
-        {/* Settings */}
-        <ProfileSettings
-          styles={styles}
-          notificationsEnabled={notificationsEnabled}
-          setNotificationsEnabled={setNotificationsEnabled}
-          onTestNotifications={() => {}}
-          HapticFeedback={HapticFeedback}
-        />
-
-        {/* Subscription Management */}
-        <ProfileSubscription
-          styles={styles}
-          isPremium={isPremium}
-          onCancel={handleCancelSubscription}
-          HapticFeedback={HapticFeedback}
-        />
-
-        {/* Account Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>ACCOUNT</Text>
-
-          <View style={styles.actionCard}>
-            <TouchableOpacity
-              style={styles.signOutButton}
-              onPress={() => {
-                HapticFeedback.medium();
-                handleSignOut();
-              }}
+    <View style={styles.container}>
+      {/* Fixed Header */}
+      <View style={styles.fixedHeaderContainer}>
+        <LinearGradient
+          colors={['#FFFFFF', '#F8F9FA']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={[styles.simpleHeader, { paddingTop: Platform.OS === 'ios' ? Math.max(insets.top - 52, 0) : 0 }, styles.headerGradient]}
+        >
+          <View style={styles.leftContainer}>
+            <TouchableOpacity 
+              style={[styles.backButton, styles.premiumButton]} 
+              onPress={() => { HapticFeedback?.light?.(); navigation.goBack(); }}
             >
-              <LinearGradient
-                colors={['#FF3B30', '#DC2626']}
-                style={styles.signOutGradient}
-              >
-                <Icon name="log-out" size={20} color="#FFFFFF" />
-                <Text style={styles.signOutText}>Sign Out</Text>
-              </LinearGradient>
+              <Icon name="arrow-back" size={24} color="#000000" />
             </TouchableOpacity>
           </View>
+          <View style={styles.titleContainer}>
+            <Text style={[styles.headerTitle, styles.premiumTitle]}>PROFILE</Text>
+          </View>
+          <View style={styles.rightContainer}>
+            <View style={styles.headerButton} />
+          </View>
+        </LinearGradient>
+      </View>
+
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={[styles.scrollViewContent, { paddingTop: Platform.OS === 'ios' ? (Math.max(insets.top - 52, 0) + 44) : 44, paddingBottom: Platform.OS === 'android' ? 20 : 20 }]}
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'never' : undefined}
+        automaticallyAdjustContentInsets={Platform.OS === 'ios' ? false : undefined}
+        contentInset={Platform.OS === 'ios' ? { top: 0, bottom: 0, left: 0, right: 0 } : undefined}
+      >
+        {/* Profile Section */}
+        <View style={styles.profileSection}>
+          <View style={styles.avatarWrapper}>
+            {userProfile?.avatar_url ? (
+              <Image
+                source={{ uri: userProfile.avatar_url }}
+                style={styles.profileAvatar}
+              />
+            ) : (
+              <View style={styles.profileAvatarPlaceholder}>
+                <Icon name="person" size={50} color="#000000" />
+              </View>
+            )}
+            {isPremium && (
+              <View style={styles.premiumBadge}>
+                <Icon name="diamond" size={16} color="#FFD700" />
+              </View>
+            )}
+          </View>
+          <Text style={styles.profileName}>
+            {userProfile?.first_name 
+              ? userProfile.last_name 
+                ? `${userProfile.first_name} ${userProfile.last_name}` 
+                : userProfile.first_name
+              : userProfile?.display_name || 'Height Seeker'}
+          </Text>
+          <Text style={styles.profileEmail}>{userProfile?.email || 'No email'}</Text>
         </View>
 
-        {/* App Info */}
-        <ProfileAbout styles={styles} />
+        {/* Key Statistic Cards */}
+        <LinearGradient
+          colors={["#F8FAFC", "#E2E8F0"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.keyStatCard}
+        >
+          <View style={styles.keyStatIconContainer}>
+            <Icon name="flame" size={20} color="#FF9500" />
+          </View>
+          <View style={styles.keyStatContent}>
+            <Text style={styles.keyStatNumber}>{userProgress?.current_streak || 0}</Text>
+            <Text style={styles.keyStatLabel}>Current Streak</Text>
+          </View>
+        </LinearGradient>
 
-        <View style={styles.bottomSpacing} />
+        {/* Seed Retention Streak Card - Only show for male users */}
+        {userProfile?.gender === 'male' && (
+          <LinearGradient
+            colors={["#F8FAFC", "#E2E8F0"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.keyStatCard}
+          >
+            <View style={styles.seedRetentionIconContainer}>
+              <Icon name="water" size={20} color="#8B5CF6" />
+            </View>
+            <View style={styles.keyStatContent}>
+              <Text style={[styles.keyStatNumber, styles.seedRetentionNumber]}>{seedRetentionStreak}</Text>
+              <Text style={styles.keyStatLabel}>Seed Retention Streak</Text>
+            </View>
+          </LinearGradient>
+        )}
+
+        {/* Menu Items List */}
+        <LinearGradient
+          colors={["#F8FAFC", "#E2E8F0"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.menuCard}
+        >
+          {/* Personal Details */}
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              HapticFeedback.light();
+              setPersonalDetailsModalVisible(true);
+            }}
+          >
+            <Icon name="person" size={24} color="#000000" />
+            <Text style={styles.menuText}>Personal Details</Text>
+            <Icon name="chevron-forward" size={20} color="#CCCCCC" />
+          </TouchableOpacity>
+
+          {/* Lifestyle */}
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              HapticFeedback.light();
+              setLifestyleModalVisible(true);
+            }}
+          >
+            <Icon name="fitness" size={24} color="#000000" />
+            <Text style={styles.menuText}>Lifestyle</Text>
+            <Icon name="chevron-forward" size={20} color="#CCCCCC" />
+          </TouchableOpacity>
+
+          {/* Add Widget to Home Screen (iOS) */}
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              HapticFeedback.light();
+              handleAddWidgetInfo();
+            }}
+          >
+            <Icon name="apps" size={24} color="#000000" />
+            <Text style={styles.menuText}>Add PeakHeight widget</Text>
+            <Icon name="chevron-forward" size={20} color="#CCCCCC" />
+          </TouchableOpacity>
+
+          {/* Send Feedback */}
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              HapticFeedback.light();
+              setFeedbackModalVisible(true);
+            }}
+          >
+            <Icon name="chatbubble-ellipses-outline" size={24} color="#000000" />
+            <Text style={styles.menuText}>Send Feedback</Text>
+            <Icon name="chevron-forward" size={20} color="#CCCCCC" />
+          </TouchableOpacity>
+
+          {/* Terms of Service */}
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              HapticFeedback.light();
+              navigation.navigate('TermsOfService');
+            }}
+          >
+            <Icon name="document-text" size={24} color="#000000" />
+            <Text style={styles.menuText}>Terms of Service</Text>
+            <Icon name="chevron-forward" size={20} color="#CCCCCC" />
+          </TouchableOpacity>
+
+          {/* Privacy Policy */}
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              HapticFeedback.light();
+              navigation.navigate('PrivacyPolicy');
+            }}
+          >
+            <Icon name="shield-checkmark" size={24} color="#000000" />
+            <Text style={styles.menuText}>Privacy Policy</Text>
+            <Icon name="chevron-forward" size={20} color="#CCCCCC" />
+          </TouchableOpacity>
+
+          {/* Subscription (if premium) */}
+          {isPremium && (
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                HapticFeedback.light();
+                handleCancelSubscription();
+              }}
+            >
+              <Icon name="diamond" size={24} color="#FFD700" />
+              <Text style={styles.menuText}>Subscription</Text>
+              <Icon name="chevron-forward" size={20} color="#CCCCCC" />
+            </TouchableOpacity>
+          )}
+
+          {/* Log Out */}
+          <TouchableOpacity
+            style={[styles.menuItem, styles.menuItemLast]}
+            onPress={() => {
+              HapticFeedback.medium();
+              handleSignOut();
+            }}
+          >
+            <Icon name="log-out" size={24} color="#000000" />
+            <Text style={styles.menuText}>Log Out</Text>
+            <Icon name="chevron-forward" size={20} color="#CCCCCC" />
+          </TouchableOpacity>
+        </LinearGradient>
+
       </ScrollView>
-    </SafeAreaView>
+
+      {/* Feedback Modal */}
+      <FeedbackModal
+        visible={feedbackModalVisible}
+        onClose={() => setFeedbackModalVisible(false)}
+        onSubmit={handleFeedbackSubmit}
+        loading={feedbackLoading}
+      />
+
+      {/* Personal Details Modal */}
+      <Modal
+        visible={personalDetailsModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setPersonalDetailsModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Personal Details</Text>
+              <TouchableOpacity
+                onPress={() => setPersonalDetailsModalVisible(false)}
+                style={styles.modalCloseButton}
+              >
+                <Icon name="close" size={24} color="#000000" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+              <View style={styles.modalInfoCard}>
+                <View style={styles.infoItem}>
+                  <View style={styles.infoIconContainer}><Icon name="calendar" size={20} color="#3B5FE3" /></View>
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Date of Birth</Text>
+                    <Text style={styles.infoValue}>{formatDate(userProfile?.date_of_birth)}</Text>
+                  </View>
+                </View>
+                <View style={styles.infoItem}>
+                  <View style={styles.infoIconContainer}><Icon name="person" size={20} color="#10B981" /></View>
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Gender</Text>
+                    <Text style={styles.infoValue}>{userProfile?.gender || 'Not set'}</Text>
+                  </View>
+                </View>
+                <View style={styles.infoItem}>
+                  <View style={styles.infoIconContainer}><Icon name="scale" size={20} color="#F59E0B" /></View>
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Current Weight</Text>
+                    <Text style={styles.infoValue}>{formatWeight(userProfile?.current_weight)}</Text>
+                  </View>
+                </View>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Lifestyle Modal */}
+      <Modal
+        visible={lifestyleModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setLifestyleModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Lifestyle</Text>
+              <TouchableOpacity
+                onPress={() => setLifestyleModalVisible(false)}
+                style={styles.modalCloseButton}
+              >
+                <Icon name="close" size={24} color="#000000" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+              <View style={styles.modalInfoCard}>
+                <View style={styles.lifestyleItem}>
+                  <View style={styles.lifestyleIconContainer}><Icon name="moon" size={20} color="#8B5CF6" /></View>
+                  <View style={styles.lifestyleContent}>
+                    <Text style={styles.lifestyleLabel}>Sleep Hours</Text>
+                    <Text style={styles.lifestyleValue}>{userProfile?.sleep_hours || 'Not set'} hours/night</Text>
+                  </View>
+                </View>
+                <View style={styles.lifestyleItem}>
+                  <View style={styles.lifestyleIconContainer}><Icon name="fitness" size={20} color="#EF4444" /></View>
+                  <View style={styles.lifestyleContent}>
+                    <Text style={styles.lifestyleLabel}>Workout Frequency</Text>
+                    <Text style={styles.lifestyleValue}>{userProfile?.workout_frequency || 'Not set'}</Text>
+                  </View>
+                </View>
+                <View style={styles.lifestyleItem}>
+                  <View style={styles.lifestyleIconContainer}><Icon name="footsteps" size={20} color="#06B6D4" /></View>
+                  <View style={styles.lifestyleContent}>
+                    <Text style={styles.lifestyleLabel}>Foot Size</Text>
+                    <Text style={styles.lifestyleValue}>{userProfile?.foot_size || 'Not set'}</Text>
+                  </View>
+                </View>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+    </View>
   );
 };
 
@@ -227,9 +597,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+    position: 'relative',
   },
   scrollView: {
     flex: 1,
+  },
+  scrollViewContent: {
+    flexGrow: 0,
   },
   loadingContainer: {
     flex: 1,
@@ -242,137 +616,203 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  // Header Styles
-  gradientHeader: {
-    paddingHorizontal: 20,
-    paddingBottom: 30,
-  },
-  headerContent: {
+  // Simple Header Styles
+  simpleHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 30,
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    minHeight: 44,
+  },
+  headerGradient: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  leftContainer: {
+    flex: 1,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  rightContainer: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  titleContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'absolute',
+    left: 0,
+    right: 0,
   },
   backButton: {
-    padding: 8,
+    padding: 2,
+    marginTop: 5,
+  },
+  premiumButton: {
+    padding: 6,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(0,0,0,0.05)',
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 1,
-  },
-  headerSpacer: {
-    width: 40, // Same width as the back button to maintain balance
-  },
-
-  // Profile Hero Styles
-  profileHero: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatarContainer: {
-    position: 'relative',
-    marginRight: 20,
-  },
-  avatarGradient: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  headerButton: {
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#000000',
+  },
+  premiumTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    color: '#000000',
+  },
+
+  // Fixed Header Container
+  fixedHeaderContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'transparent',
+    zIndex: 1000,
+  },
+
+  // Profile Section Styles
+  profileSection: {
+    alignItems: 'center',
+    paddingTop: Platform.OS === 'ios' ? 40 : 30,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 20,
+  },
+  avatarWrapper: {
+    position: 'relative',
+    marginBottom: 16,
+  },
+  profileAvatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#F5F5F5',
+  },
+  profileAvatarPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   premiumBadge: {
     position: 'absolute',
-    top: -5,
-    right: -5,
-    backgroundColor: '#000000',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    width: 24,
-    height: 24,
+    width: 28,
+    height: 28,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
-  profileInfo: {
-    flex: 1,
-  },
-  userName: {
+  profileName: {
     fontSize: 24,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontWeight: 'bold',
+    color: '#000000',
     marginBottom: 4,
   },
-  userEmail: {
+  profileEmail: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginBottom: 12,
-  },
-  membershipBadge: {
-    alignSelf: 'flex-start',
-  },
-  badgeGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginLeft: 6,
-    letterSpacing: 0.5,
+    color: '#000000',
   },
 
-  // Stats Styles
-  statsContainer: {
-    paddingHorizontal: 20,
-    marginTop: -15,
-    marginBottom: 20,
-  },
-  statsRow: {
+  // Key Statistic Card
+  keyStatCard: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
+    alignItems: 'center',
+    borderRadius: 14,
+    padding: 14,
+    marginHorizontal: 20,
+    marginBottom: 10,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  statCard: {
+  keyStatIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 149, 0, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  seedRetentionIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  seedRetentionNumber: {
+    color: '#8B5CF6',
+  },
+  keyStatContent: {
     flex: 1,
-    marginHorizontal: 5,
+  },
+  keyStatNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#000000',
+    marginBottom: 2,
+  },
+  keyStatLabel: {
+    fontSize: 13,
+    color: '#000000',
+  },
+
+  // Menu Card
+  menuCard: {
     borderRadius: 16,
+    marginHorizontal: 20,
+    marginBottom: 0,
     overflow: 'hidden',
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 2,
   },
-  statGradient: {
-    padding: 20,
+  menuItem: {
+    flexDirection: 'row',
     alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
   },
-  statNumber: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginTop: 8,
-    marginBottom: 4,
+  menuItemLast: {
+    borderBottomWidth: 0,
   },
-  statLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.9)',
-    textAlign: 'center',
+  menuText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#000000',
+    marginLeft: 16,
   },
+
 
   // Progress Card Styles
   progressCard: {
@@ -398,7 +838,7 @@ const styles = StyleSheet.create({
   },
   progressSubtitle: {
     fontSize: 14,
-    color: '#666666',
+    color: '#000000',
     fontWeight: '500',
   },
   heightDisplay: {
@@ -412,7 +852,7 @@ const styles = StyleSheet.create({
   },
   heightLabel: {
     fontSize: 12,
-    color: '#666666',
+    color: '#000000',
     fontWeight: '600',
     marginBottom: 4,
   },
@@ -446,18 +886,6 @@ const styles = StyleSheet.create({
     color: '#000000',
   },
 
-  // Section Styles
-  section: {
-    marginTop: 20,
-    paddingHorizontal: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#000000',
-    marginBottom: 16,
-    letterSpacing: 0.5,
-  },
 
   // Info Card Styles
   infoCard: {
@@ -489,7 +917,7 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 14,
-    color: '#666666',
+    color: '#000000',
     fontWeight: '500',
     marginBottom: 2,
   },
@@ -529,7 +957,7 @@ const styles = StyleSheet.create({
   },
   lifestyleLabel: {
     fontSize: 14,
-    color: '#666666',
+    color: '#000000',
     fontWeight: '500',
     marginBottom: 2,
   },
@@ -677,7 +1105,7 @@ const styles = StyleSheet.create({
   },
   versionLabel: {
     fontSize: 14,
-    color: '#666666',
+    color: '#000000',
     fontWeight: '500',
     marginBottom: 2,
   },
@@ -709,9 +1137,46 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  bottomSpacing: {
-    height: 40,
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
   },
+  modalCard: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '80%',
+    paddingBottom: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#000000',
+  },
+  modalCloseButton: {
+    padding: 4,
+  },
+  modalContent: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  modalInfoCard: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+  },
+
 });
 
 export default PersonalProfileScreen;

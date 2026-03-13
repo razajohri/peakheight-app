@@ -1,75 +1,154 @@
 // Onboarding14.js (Page 14 - Testimonial page and Rating pop up)
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Modal } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Modal, Platform, Linking, Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import FloatingStars from '../../components/UI/FloatingStars';
+import OnboardingButton from '../../components/onboarding/OnboardingButton';
 import { FontAwesome } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { 
+  ONBOARDING_TYPOGRAPHY, 
+  ONBOARDING_SPACING,
+  ONBOARDING_COLORS 
+} from '../../utils/onboardingConstants';
 
 const Onboarding14 = ({ navigation }) => {
   const [ratingModalVisible, setRatingModalVisible] = useState(false);
   const [selectedRating, setSelectedRating] = useState(0);
+  
+  
+
+  // App Store configuration
+  const APP_STORE_CONFIG = {
+    isLive: true, // ✅ App is now live!
+    iosAppId: '6752793377', // ✅ Your actual App Store ID
+    androidPackageName: 'com.peakheight.app', // Your package name
+  };
+
+  // Handle rating submission
+  const handleRatingSubmission = async (rating) => {
+    if (!APP_STORE_CONFIG.isLive) {
+      Alert.alert(
+        'Coming Soon!',
+        'Thank you for your feedback! The app will be available on the App Store soon.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    if (rating >= 4) {
+      // High rating - direct to App Store
+      const appStoreUrl = Platform.OS === 'ios'
+        ? `https://apps.apple.com/app/id${APP_STORE_CONFIG.iosAppId}?action=write-review`
+        : `https://play.google.com/store/apps/details?id=${APP_STORE_CONFIG.androidPackageName}`;
+
+      try {
+        await Linking.openURL(appStoreUrl);
+      } catch (error) {
+        Alert.alert('Error', 'Could not open App Store. Please try again later.');
+      }
+    } else {
+      // Low rating - show feedback form or contact
+      Alert.alert(
+        'We Value Your Feedback',
+        'We\'re sorry to hear that. Please contact us at support@peakheight.app to help us improve.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  // Open rating popup right after page mounts (only if app is live)
+  useEffect(() => {
+    if (APP_STORE_CONFIG.isLive) {
+      const timer = setTimeout(() => {
+        setRatingModalVisible(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }, 1000); // Reduced delay for faster popup
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const reviews = [
+    {
+      id: 'mark',
+      name: 'Mark Michael',
+      handle: '@michaelmark',
+      text: 'The daily reminders are a game changer. Makes it so much easier to stay consistent with exercise.',
+      avatar: require('../../../assets/testimonial-mark.webp'),
+    },
+    {
+      id: 'mo',
+      name: 'Mo Daiyoub',
+      handle: '@baby_mo',
+      text: "Didn't think an app could motivate me like this.",
+      avatar: require('../../../assets/testimonial-mo.webp'),
+    },
+    {
+      id: 'seva',
+      name: 'Seva Jaenen',
+      handle: '@s.jaenen04',
+      text: 'Really impressed with how smooth the app is.',
+      avatar: require('../../../assets/testimonial-seva.webp'),
+    },
+  ];
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: '93%' }]} />
-        </View>
-        <Text style={styles.progressText}>14/15</Text>
-      </View>
+      <FloatingStars />
+      {/* No progress header - this page doesn't count toward onboarding steps */}
 
       <View style={styles.contentContainer}>
-        <Text style={styles.title}>Success stories</Text>
-
-        <View style={[styles.testimonialCard, styles.firstCard]}>
-          <View style={styles.testimonialHeader}>
-            <Image
-              source={require('../../../assets/peakheight-logo.jpg')}
-              style={styles.avatarSmall}
-            />
-            <View style={styles.testimonialHeaderText}>
-              <Text style={styles.testimonialName}>Michael, 17</Text>
-              <Text style={styles.testimonialResult}>+2.3 inches in 4 months</Text>
-            </View>
-          </View>
-
-          <Text style={styles.testimonialQuoteSmall}>
-            "PeakHeight helped me add over 2 inches in 4 months. Consistent sleep and posture work made the difference."
-          </Text>
+        <View style={styles.headerSection}>
+          <Text style={styles.title}>Leave a Rating</Text>
+          <Text style={styles.subtitle}>This helps us bring you more of what you love</Text>
         </View>
 
-        <View style={styles.testimonialCard}>
-          <View style={styles.testimonialHeader}>
-            <Image
-              source={require('../../../assets/peakheight-logo.jpg')}
-              style={styles.avatar}
-            />
-            <View style={styles.testimonialHeaderText}>
-              <Text style={styles.testimonialName}>Sarah, 16</Text>
-              <Text style={styles.testimonialResult}>+1.7 inches in 6 months</Text>
+        <View style={styles.reviewsList}>
+          {reviews.map((r, idx) => (
+            <View key={r.id} style={styles.reviewCard}>
+              <View style={styles.reviewCardInner}>
+                <LinearGradient
+                  colors={['rgba(255,255,255,0.08)', 'rgba(255,255,255,0)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.reviewCardGlow}
+                  pointerEvents="none"
+                />
+                <View style={styles.reviewHeader}>
+                  <View style={styles.reviewHeaderLeft}>
+                    <Image source={r.avatar} style={styles.reviewAvatar} />
+                    <View>
+                      <Text style={styles.reviewName}>{r.name}</Text>
+                      <Text style={styles.reviewHandle}>{r.handle}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.reviewStars}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <FontAwesome
+                        key={star}
+                        name="star"
+                        size={13}
+                        color="#FFD700"
+                        style={styles.reviewStar}
+                      />
+                    ))}
+                  </View>
+                </View>
+                <Text style={styles.reviewText}>"{r.text}"</Text>
+              </View>
             </View>
-          </View>
-
-          <Text style={styles.testimonialQuote}>
-            "The nutrition advice and stretching routines helped me grow taller than both my parents. My posture has improved significantly too."
-          </Text>
+          ))}
         </View>
 
-        <TouchableOpacity
-          style={styles.ratingButton}
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setRatingModalVisible(true); }}
-        >
-          <Text style={styles.ratingButtonText}>Rate the app</Text>
-        </TouchableOpacity>
       </View>
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.button}
+        <OnboardingButton
+          title="Continue"
           onPress={() => navigation.navigate('Onboarding15')}
-        >
-          <Text style={styles.buttonText}>Continue</Text>
-        </TouchableOpacity>
+        />
       </View>
 
       {/* Rating Modal */}
@@ -83,17 +162,25 @@ const Onboarding14 = ({ navigation }) => {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>How would you rate PeakHeight?</Text>
 
-            <View style={styles.starsContainer}>
+            <View style={styles.modalStarsContainer}>
               {[1, 2, 3, 4, 5].map((rating) => (
                 <TouchableOpacity
                   key={rating}
-                  onPress={() => setSelectedRating(rating)}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setSelectedRating(rating);
+                    if (rating === 5) {
+                      // Auto-submit 5-star rating
+                      setRatingModalVisible(false);
+                      handleRatingSubmission(5);
+                    }
+                  }}
                 >
                   <FontAwesome
                     name={rating <= selectedRating ? "star" : "star-o"}
                     size={32}
                     color={rating <= selectedRating ? "#FFD700" : "#AAAAAA"}
-                    style={styles.star}
+                    style={styles.modalStar}
                   />
                 </TouchableOpacity>
               ))}
@@ -116,7 +203,7 @@ const Onboarding14 = ({ navigation }) => {
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setRatingModalVisible(false);
-                  // Handle rating submission
+                  handleRatingSubmission(selectedRating);
                 }}
               >
                 <Text style={styles.modalPrimaryButtonText}>Submit</Text>
@@ -132,95 +219,100 @@ const Onboarding14 = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 4,
-    marginBottom: 24,
-  },
-  progressBar: {
-    flex: 1,
-    height: 4,
-    backgroundColor: '#1f1f1f',
-    borderRadius: 2,
-    marginRight: 12,
-  },
-  progressFill: {
-    height: 4,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 2,
-  },
-  progressText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: '#9CA3AF',
+    backgroundColor: ONBOARDING_COLORS.BACKGROUND,
   },
   contentContainer: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: ONBOARDING_SPACING.PAGE_HORIZONTAL,
+    paddingTop: 0,
+  },
+  headerSection: {
+    marginBottom: 28,
+    paddingTop: 0,
+    alignItems: 'center',
   },
   title: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 28,
-    color: '#FFFFFF',
-    marginBottom: 24,
-    letterSpacing: -0.5,
+    ...ONBOARDING_TYPOGRAPHY.PAGE_TITLE,
+    fontSize: 30,
+    fontWeight: '800',
+    marginBottom: 6,
+    textAlign: 'center',
   },
-  testimonialCard: {
-    backgroundColor: '#0a0a0a',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+  subtitle: {
+    ...ONBOARDING_TYPOGRAPHY.SUBTITLE,
+    fontSize: 15,
+    textAlign: 'center',
+  },
+  reviewsList: {
+    flex: 1,
+    gap: 4,
+  },
+  reviewCard: {
+    borderRadius: 24,
+    padding: 3,
+    shadowColor: '#7C7C7C',
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.38,
+    shadowRadius: 36,
+    elevation: 16,
+  },
+  reviewCardInner: {
+    borderRadius: 22,
+    backgroundColor: '#050505',
+    paddingVertical: 24,
+    paddingHorizontal: 24,
     borderWidth: 1,
-    borderColor: '#1f1f1f',
+    borderColor: 'rgba(255,255,255,0.08)',
+    overflow: 'hidden',
   },
-  testimonialHeader: {
+  reviewCardGlow: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 20,
+    opacity: 0.35,
+  },
+  reviewHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: 12,
+  reviewHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
-  avatarSmall: {
+  reviewAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
     marginRight: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
-  testimonialHeaderText: {
-    flex: 1,
-  },
-  testimonialName: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 16,
+  reviewName: {
+    fontWeight: '600',
+    fontSize: 15,
     color: '#FFFFFF',
+    fontFamily: 'Inter-SemiBold',
   },
-  testimonialResult: {
+  reviewHandle: {
     fontFamily: 'Inter-Regular',
-    fontSize: 14,
+    fontSize: 13,
     color: '#9CA3AF',
   },
-  testimonialQuote: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 16,
-    color: '#FFFFFF',
-    lineHeight: 24,
+  reviewStars: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  testimonialQuoteSmall: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: '#FFFFFF',
-    lineHeight: 20,
+  reviewStar: {
+    marginRight: 2,
   },
-  firstCard: {
-    paddingVertical: 12,
+  reviewText: {
+    fontSize: 15,
+    color: '#E5E7EB',
+    lineHeight: 22,
+    fontFamily: 'Inter-Regular',
+    fontStyle: 'italic',
   },
   ratingButton: {
     alignSelf: 'center',
@@ -234,25 +326,8 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
   },
   buttonContainer: {
-    padding: 24,
-  },
-  button: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#1f1f1f',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  buttonText: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 16,
-    color: '#000000',
+    padding: ONBOARDING_SPACING.LG,
+    paddingBottom: 40,
   },
   modalOverlay: {
     flex: 1,
@@ -275,12 +350,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     textAlign: 'center',
   },
-  starsContainer: {
+  modalStarsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     marginBottom: 24,
   },
-  star: {
+  modalStar: {
     marginHorizontal: 8,
   },
   modalButtonsContainer: {
@@ -289,17 +364,18 @@ const styles = StyleSheet.create({
   },
   modalSecondaryButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 8,
     alignItems: 'center',
     marginRight: 8,
-    borderWidth: 1,
-    borderColor: '#1f1f1f',
+    borderWidth: 0,
+    borderColor: 'transparent',
     borderRadius: 12,
+    backgroundColor: 'transparent',
   },
   modalSecondaryButtonText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 16,
-    color: '#FFFFFF',
+    fontFamily: 'Inter-Regular',
+    fontSize: 15,
+    color: '#9CA3AF',
   },
   modalPrimaryButton: {
     flex: 1,

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Alert } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import Icon from '../UI/Icon';
 import { ShareService } from '../../services/shareService';
 
 const ShareModal = ({ visible, onClose, post }) => {

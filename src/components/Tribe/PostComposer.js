@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Modal, Image, Alert } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Modal, Image, Alert, ScrollView, Keyboard, KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native';
+import Icon from '../UI/Icon';
 import * as ImagePicker from 'expo-image-picker';
 
 const PostComposer = ({
@@ -18,6 +18,15 @@ const PostComposer = ({
   const handleImagePicker = async () => {
     console.log('Image picker button clicked!');
 
+    // Pre-check permissions to avoid app exit on iOS
+    const mediaPermission = await ImagePicker.getMediaLibraryPermissionsAsync();
+    const cameraPermission = await ImagePicker.getCameraPermissionsAsync();
+    
+    console.log('Current permissions:', { 
+      media: mediaPermission.status, 
+      camera: cameraPermission.status 
+    });
+
     // Show options for camera or photo library
     Alert.alert(
       'Select Image',
@@ -32,21 +41,25 @@ const PostComposer = ({
 
   const openImageLibrary = async () => {
     try {
-      // Request permission first
-      console.log('Requesting media library permissions...');
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      console.log('Permission result:', permissionResult);
+      // Check current permission status
+      const { status: currentStatus } = await ImagePicker.getMediaLibraryPermissionsAsync();
+      console.log('Current media library permission:', currentStatus);
 
-      if (permissionResult.granted === false) {
+      let finalStatus = currentStatus;
+
+      // Request permission if not already granted
+      if (currentStatus !== 'granted') {
+        console.log('Requesting media library permissions...');
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        finalStatus = status;
+        console.log('Permission result:', finalStatus);
+      }
+
+      if (finalStatus !== 'granted') {
         Alert.alert(
           'Permission Required',
           'Please allow access to your photo library in Settings to share images.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Settings', onPress: () => {
-              console.log('Open app settings');
-            }}
-          ]
+          [{ text: 'OK' }]
         );
         return;
       }
@@ -61,6 +74,8 @@ const PostComposer = ({
         maxHeight: 1024,
         exif: false,
         base64: false,
+        // Force JPEG output for better compatibility (converts HEIC automatically)
+        allowsMultipleSelection: false,
       });
 
       console.log('Image picker result:', result);
@@ -83,21 +98,25 @@ const PostComposer = ({
 
   const openCamera = async () => {
     try {
-      // Request camera permission first
-      console.log('Requesting camera permissions...');
-      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-      console.log('Camera permission result:', permissionResult);
+      // Check current permission status
+      const { status: currentStatus } = await ImagePicker.getCameraPermissionsAsync();
+      console.log('Current camera permission:', currentStatus);
 
-      if (permissionResult.granted === false) {
+      let finalStatus = currentStatus;
+
+      // Request permission if not already granted
+      if (currentStatus !== 'granted') {
+        console.log('Requesting camera permissions...');
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        finalStatus = status;
+        console.log('Camera permission result:', finalStatus);
+      }
+
+      if (finalStatus !== 'granted') {
         Alert.alert(
           'Permission Required',
           'Please allow access to your camera in Settings to take photos.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Settings', onPress: () => {
-              console.log('Open app settings');
-            }}
-          ]
+          [{ text: 'OK' }]
         );
         return;
       }
@@ -112,6 +131,8 @@ const PostComposer = ({
         maxHeight: 1024,
         exif: false,
         base64: false,
+        // Force JPEG output for better compatibility
+        allowsMultipleSelection: false,
       });
 
       console.log('Camera result:', result);
@@ -136,6 +157,22 @@ const PostComposer = ({
     setSelectedImages([]);
   };
 
+  const handleHeightTagChange = (text) => {
+    // Check if the text contains any non-numeric characters (except periods)
+    const hasInvalidChars = /[^0-9.]/.test(text);
+    
+    if (hasInvalidChars) {
+      // Show alert if user tries to enter words or invalid characters
+      Alert.alert('Invalid Input', 'Please enter only numbers and periods (.)');
+      // Filter out invalid characters
+      const filteredText = text.replace(/[^0-9.]/g, '');
+      setHeightTag(filteredText);
+    } else {
+      // Only allow numbers and periods (dots)
+      setHeightTag(text);
+    }
+  };
+
   return (
     <Modal
       visible={visible}
@@ -143,8 +180,13 @@ const PostComposer = ({
       transparent={true}
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.composerContainer}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.modalOverlay}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 20}
+      >
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.composerContainer}>
           <View style={styles.composerHeader}>
             <Text style={styles.composerTitle}>Create Post</Text>
             <TouchableOpacity onPress={onClose}>
@@ -152,14 +194,24 @@ const PostComposer = ({
             </TouchableOpacity>
           </View>
 
-          <TextInput
+          <ScrollView 
+            style={styles.composerScrollView}
+            contentContainerStyle={styles.composerScrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            keyboardDismissMode="interactive"
+            nestedScrollEnabled={true}
+          >
+            <TextInput
             style={styles.composerInput}
-            placeholder="What's on your height journey?"
+            placeholder="What's on your mind?"
             placeholderTextColor="#AAAAAA"
             multiline
             maxLength={500}
             value={postText}
             onChangeText={setPostText}
+            blurOnSubmit={true}
+            onSubmitEditing={() => Keyboard.dismiss()}
           />
 
           <View style={styles.composerCounter}>
@@ -172,10 +224,11 @@ const PostComposer = ({
             <Text style={styles.heightTagLabel}>Height Tag:</Text>
             <TextInput
               style={styles.heightTagInput}
-              placeholder="178 cm or #posture"
+              placeholder="178.5"
               placeholderTextColor="#AAAAAA"
               value={heightTag}
-              onChangeText={setHeightTag}
+              onChangeText={handleHeightTagChange}
+              keyboardType="decimal-pad"
             />
           </View>
 
@@ -217,8 +270,10 @@ const PostComposer = ({
               </Text>
             </TouchableOpacity>
           </View>
+          </ScrollView>
         </View>
-      </View>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -229,12 +284,23 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
+  safeArea: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
   composerContainer: {
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    maxHeight: '80%',
+    maxHeight: '90%',
+  },
+  composerScrollView: {
+    flexGrow: 1,
+  },
+  composerScrollContent: {
+    paddingBottom: 40,
+    flexGrow: 1,
   },
   composerHeader: {
     flexDirection: 'row',

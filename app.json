@@ -1,39 +1,73 @@
 {
   "expo": {
+    "scheme": "peakheight",
+    "extra": {
+      "eas": {
+        "projectId": "7f85fd1d-a548-432d-b466-a558ed84459b"
+      },
+      "facebookAppId": "YOUR_FACEBOOK_APP_ID",
+      "facebookDisplayName": "PeakHeight"
+    },
     "name": "PeakHeight",
     "slug": "peakheightapp",
-    "version": "1.0.0",
+    "version": "1.0.38",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/Untitled design-padded.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
     "userInterfaceStyle": "dark",
-    "newArchEnabled": false,
-
+    "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.peakheight.app",
+      "buildNumber": "7",
+      "usesNonExemptEncryption": false,
+      "requireFullScreen": true,
+      "fonts": [
+        "node_modules/react-native-vector-icons/Fonts/Ionicons.ttf",
+        "node_modules/react-native-vector-icons/Fonts/FontAwesome.ttf"
+      ],
       "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "This app uses the camera to scan barcodes for food nutrition information.",
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to let you share images in the Tribe community."
       },
       "notification": {
-        "icon": "./assets/icon.png"
-      }
+        "icon": "./assets/peakheight-logo-removebg-preview.png"
+      },
+      "usesAppleSignIn": true
     },
     "android": {
+      "versionCode": 38,
+      "icon": "./assets/Untitled design-padded.png",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/Untitled design-padded.png",
         "backgroundColor": "#1a1a1a"
       },
+      "splash": {
+        "image": "./assets/Untitled design-padded.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#000000"
+      },
       "notification": {
-        "icon": "./assets/icon.png"
+        "icon": "./assets/peakheight-logo-removebg-preview.png"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.peakheight.app",
+      "fonts": [
+        "node_modules/react-native-vector-icons/Fonts/Ionicons.ttf",
+        "node_modules/react-native-vector-icons/Fonts/FontAwesome.ttf"
+      ],
       "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
-      ]
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "jsEngine": "hermes"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -59,11 +93,30 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
+          "icon": "./assets/peakheight-logo-removebg-preview.png",
           "color": "#000000",
           "defaultChannel": "default"
         }
+      ],
+      "@react-native-community/datetimepicker",
+      "@sentry/react-native",
+      "expo-image",
+      [
+        "expo-widgets",
+        {
+          "bundleIdentifier": "com.peakheight.app.widgets",
+          "groupIdentifier": "group.com.peakheight.app",
+          "widgets": [
+            {
+              "name": "PeakHeightToday",
+              "displayName": "PeakHeight Today",
+              "description": "See today\u2019s growth focus at a glance.",
+              "supportedFamilies": ["systemSmall", "systemMedium"]
+            }
+          ]
+        }
       ]
-    ]
+    ],
+    "owner": "iamali"
   }
 }

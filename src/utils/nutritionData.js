@@ -8,9 +8,9 @@ export const NUTRITION_ITEMS = [
     categoryId: 'supplements',
     type: 'Vitamin',
     dosage: '1000-2000 IU daily',
-    benefits: ['Bone health', 'Calcium absorption', 'Immune support'],
-    description: 'Essential for calcium absorption and bone mineralization. Crucial for height growth during development.',
-    growthScore: 95,
+    benefits: ['Bone health', 'Calcium absorption', 'Hormone production', 'Testosterone support'],
+    description: 'Essential for calcium absorption and bone mineralization. Enables calcium absorption and plays a role in hormone production. One trial showed vitamin D-deficient teens who took D supplements grew ~0.9 cm taller in 6 months vs. placebo. Vitamin D may also support testosterone - a study in men found a significant increase in testosterone after a year of supplementation.',
+    growthScore: 96,
     bestTime: 'Morning with food',
     image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&h=300&fit=crop'
   },
@@ -20,10 +20,10 @@ export const NUTRITION_ITEMS = [
     categoryId: 'supplements',
     type: 'Mineral',
     dosage: '500-1000mg daily',
-    benefits: ['Bone strength', 'Muscle function', 'Nerve transmission'],
-    description: 'Highly absorbable form of calcium essential for bone development and growth.',
-    growthScore: 92,
-    bestTime: 'Evening with food',
+    benefits: ['Bone strength', 'Bone elongation', 'Muscle function', 'Nerve transmission'],
+    description: 'Works together with Vitamin D to build strong bones and optimize growth. Adequate calcium (via diet or supplements) is essential for bone elongation. Vitamin D enables calcium absorption, making this combination crucial for height development.',
+    growthScore: 94,
+    bestTime: 'Evening with food (with Vitamin D)',
     image: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=300&h=300&fit=crop'
   },
   {
@@ -32,21 +32,21 @@ export const NUTRITION_ITEMS = [
     categoryId: 'supplements',
     type: 'Mineral',
     dosage: '200-400mg daily',
-    benefits: ['Bone health', 'Sleep quality', 'Muscle relaxation'],
-    description: 'Supports bone mineralization and improves sleep quality for optimal growth hormone release.',
-    growthScore: 88,
+    benefits: ['Deep sleep', 'Muscle recovery', 'Hormone balance', 'Testosterone boost', 'Bone health'],
+    description: 'Supports deep sleep, muscle recovery, and hormone balance. Research shows supplementing magnesium increases free and total testosterone levels, especially in active individuals. It aids quality sleep (when most growth hormone is released) and contributes to bone health. Common forms are magnesium citrate or glycinate.',
+    growthScore: 90,
     bestTime: 'Evening before bed',
-    image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=300&fit=crop'
+    image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=300&h=300&fit=crop'
   },
   {
     id: 'supp-004',
     name: 'Zinc Picolinate',
     categoryId: 'supplements',
     type: 'Mineral',
-    dosage: '15-30mg daily',
-    benefits: ['Growth hormone', 'Immune function', 'Protein synthesis'],
-    description: 'Essential for growth hormone production and protein synthesis during development.',
-    growthScore: 90,
+    dosage: '5-15mg daily',
+    benefits: ['Growth hormone', 'IGF-1 production', 'Bone formation', 'Puberty support', 'Testosterone'],
+    description: 'An essential mineral for growth and puberty. Zinc is involved in GH/IGF-1 production and bone formation; even mild deficiency can stunt height gain and delay puberty. Ensuring sufficient zinc (via foods like meat, seeds or a 5-15 mg supplement) can promote healthy height and testosterone levels. Zinc supplementation has been shown to improve linear growth in deficient children.',
+    growthScore: 92,
     bestTime: 'Morning with food',
     image: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=300&h=300&fit=crop'
   },
@@ -60,7 +60,7 @@ export const NUTRITION_ITEMS = [
     description: 'Supports brain development and reduces inflammation that can hinder growth.',
     growthScore: 85,
     bestTime: 'With meals',
-    image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=300&fit=crop'
+    image: 'https://images.unsplash.com/photo-1586156192271-3e7bd3a06c6b?w=300&h=300&fit=crop'
   },
   {
     id: 'supp-006',
@@ -96,7 +96,43 @@ export const NUTRITION_ITEMS = [
     description: 'Essential for energy production and protein metabolism during growth.',
     growthScore: 82,
     bestTime: 'Morning with food',
-    image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=300&fit=crop'
+    image: 'https://images.unsplash.com/photo-1582719478185-2f57b94f094d?w=300&h=300&fit=crop'
+  },
+  {
+    id: 'supp-009',
+    name: 'L-Arginine',
+    categoryId: 'supplements',
+    type: 'Amino Acid',
+    dosage: '5-9g daily',
+    benefits: ['Growth hormone release', 'Protein synthesis', 'Muscle recovery'],
+    description: 'A natural amino acid that can stimulate growth hormone release. Studies show oral arginine at bedtime can double resting GH levels (100%+ increase) compared to baseline by prompting the pituitary to secrete more HGH.',
+    growthScore: 93,
+    bestTime: 'Before bed (alone, without exercise)',
+    image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&h=300&fit=crop'
+  },
+  {
+    id: 'supp-010',
+    name: 'Ashwagandha',
+    categoryId: 'supplements',
+    type: 'Adaptogenic Herb',
+    dosage: '300-600mg extract daily',
+    benefits: ['Testosterone boost', 'Stress reduction', 'Sleep quality', 'Growth hormone support'],
+    description: 'An adaptogenic herb that helps manage stress and has been shown to boost testosterone levels. Clinical trials show young men taking ~600 mg/day had significantly higher testosterone increases (+96 ng/dL vs +18 ng/dL in placebo) over 8 weeks. By reducing cortisol and improving sleep, it may indirectly support growth hormone output.',
+    growthScore: 91,
+    bestTime: 'Evening or with meals',
+    image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=300&h=300&fit=crop'
+  },
+  {
+    id: 'supp-011',
+    name: 'Mucuna Pruriens',
+    categoryId: 'supplements',
+    type: 'Herbal Supplement',
+    dosage: '500-1000mg daily',
+    benefits: ['L-DOPA source', 'Dopamine support', 'Growth hormone', 'Testosterone'],
+    description: 'A tropical legume high in L-DOPA, which raises dopamine levels and may support growth hormone production and testosterone levels.',
+    growthScore: 88,
+    bestTime: 'Morning or evening',
+    image: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=300&h=300&fit=crop'
   },
 
   // GROWTH FOODS

@@ -1,21 +1,32 @@
 // Onboarding5.js (Page 5 - What is your height & weight?)
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
+import FloatingStars from '../../components/UI/FloatingStars';
+import ProgressHeader from '../../components/onboarding/ProgressHeader';
+import OnboardingButton from '../../components/onboarding/OnboardingButton';
+import HapticFeedback from '../../utils/hapticFeedback';
+import { Ionicons } from '@expo/vector-icons';
+import { 
+  ONBOARDING_TYPOGRAPHY, 
+  ONBOARDING_SPACING,
+  ONBOARDING_COLORS,
+  ONBOARDING_BORDER_RADIUS 
+} from '../../utils/onboardingConstants';
 
 const Onboarding5 = ({ navigation, data, updateData }) => {
   const [measurementSystem, setMeasurementSystem] = useState(data.measurementSystem || 'imperial'); // 'imperial' or 'metric'
+  
 
   // Imperial
-  const [feet, setFeet] = useState(data.feet || 5);
-  const [inches, setInches] = useState(data.inches || 6);
-  const [pounds, setPounds] = useState(data.pounds || 150);
+  const [feet, setFeet] = useState(data.feet || 0);
+  const [inches, setInches] = useState(data.inches || 0);
+  const [pounds, setPounds] = useState(data.pounds || 0);
 
   // Metric
-  const [cm, setCm] = useState(data.cm || 168);
-  const [kg, setKg] = useState(data.kg || 68);
+  const [cm, setCm] = useState(data.cm || 0);
+  const [kg, setKg] = useState(data.kg || 0);
 
 
   const updateMeasurementSystem = (system) => {
@@ -78,16 +89,23 @@ const Onboarding5 = ({ navigation, data, updateData }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: '33%' }]} />
-        </View>
-        <Text style={styles.progressText}>5/15</Text>
-      </View>
+      <FloatingStars />
+      <ProgressHeader 
+        currentStep={5} 
+        onBack={() => navigation.goBack()} 
+      />
 
-      <ScrollView style={styles.scrollView}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContentContainer}
+        showsVerticalScrollIndicator={true}
+        bounces={true}
+        scrollEnabled={true}
+      >
         <View style={styles.contentContainer}>
-          <Text style={styles.title}>What is your height & weight?</Text>
+          <View style={styles.titleContainer}>
+            <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit={true}>What is your height & weight?</Text>
+          </View>
 
           <View style={styles.segmentContainer}>
             <TouchableOpacity
@@ -133,11 +151,12 @@ const Onboarding5 = ({ navigation, data, updateData }) => {
                   <View style={styles.sliderValueContainer}>
                     <Slider
                       style={styles.slider}
-                      minimumValue={4}
+                      minimumValue={0}
                       maximumValue={7}
                       step={1}
                       value={feet}
                       onValueChange={(value) => {
+                        HapticFeedback.selection();
                         setFeet(value);
                         updateHeightWeight();
                       }}
@@ -159,6 +178,7 @@ const Onboarding5 = ({ navigation, data, updateData }) => {
                       step={1}
                       value={inches}
                       onValueChange={(value) => {
+                        HapticFeedback.selection();
                         setInches(value);
                         updateHeightWeight();
                       }}
@@ -176,11 +196,12 @@ const Onboarding5 = ({ navigation, data, updateData }) => {
                 <View style={styles.sliderValueContainer}>
                   <Slider
                     style={styles.slider}
-                    minimumValue={120}
+                    minimumValue={0}
                     maximumValue={220}
                     step={1}
                     value={cm}
                     onValueChange={(value) => {
+                      HapticFeedback.selection();
                       setCm(value);
                       updateHeightWeight();
                     }}
@@ -203,11 +224,12 @@ const Onboarding5 = ({ navigation, data, updateData }) => {
                 <View style={styles.sliderValueContainer}>
                   <Slider
                     style={styles.slider}
-                    minimumValue={80}
+                    minimumValue={0}
                     maximumValue={300}
                     step={1}
                     value={pounds}
                     onValueChange={(value) => {
+                      HapticFeedback.selection();
                       setPounds(value);
                       updateHeightWeight();
                     }}
@@ -224,11 +246,12 @@ const Onboarding5 = ({ navigation, data, updateData }) => {
                 <View style={styles.sliderValueContainer}>
                   <Slider
                     style={styles.slider}
-                    minimumValue={36}
+                    minimumValue={0}
                     maximumValue={136}
                     step={1}
                     value={kg}
                     onValueChange={(value) => {
+                      HapticFeedback.selection();
                       setKg(value);
                       updateHeightWeight();
                     }}
@@ -243,22 +266,18 @@ const Onboarding5 = ({ navigation, data, updateData }) => {
           </View>
 
 
-          <View style={styles.confidenceTag}>
-            <Text style={styles.confidenceText}>Confidence: High</Text>
-          </View>
         </View>
       </ScrollView>
 
+      <View style={styles.helperTextContainer}>
+        <Text style={styles.helperText}>This will be used to create your personal plan</Text>
+      </View>
+
       <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={async () => {
-            try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
-            handleContinue();
-          }}
-        >
-          <Text style={styles.buttonText}>Continue</Text>
-        </TouchableOpacity>
+        <OnboardingButton
+          title="Continue"
+          onPress={handleContinue}
+        />
       </View>
     </SafeAreaView>
   );
@@ -267,87 +286,71 @@ const Onboarding5 = ({ navigation, data, updateData }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 4,
-    marginBottom: 24,
-  },
-  progressBar: {
-    flex: 1,
-    height: 4,
-    backgroundColor: '#1f1f1f',
-    borderRadius: 2,
-    marginRight: 12,
-  },
-  progressFill: {
-    height: 4,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 2,
-  },
-  progressText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: '#9CA3AF',
+    backgroundColor: ONBOARDING_COLORS.BACKGROUND,
   },
   scrollView: {
     flex: 1,
   },
+  scrollContentContainer: {
+    flexGrow: 1,
+  },
   contentContainer: {
-    paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingHorizontal: ONBOARDING_SPACING.PAGE_HORIZONTAL,
+    paddingTop: ONBOARDING_SPACING.PAGE_VERTICAL,
+    paddingBottom: ONBOARDING_SPACING.LG,
+  },
+  titleContainer: {
+    marginBottom: ONBOARDING_SPACING.SECTION_GAP,
   },
   title: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 28,
-    color: '#FFFFFF',
-    marginBottom: 24,
-    letterSpacing: -0.5,
+    ...ONBOARDING_TYPOGRAPHY.PAGE_TITLE,
+    fontSize: 25,
+    textAlign: 'center',
+  },
+  subtitle: {
+    ...ONBOARDING_TYPOGRAPHY.SUBTITLE,
+    textAlign: 'center',
+    marginBottom: ONBOARDING_SPACING.LG,
   },
   segmentContainer: {
     flexDirection: 'row',
-    marginBottom: 24,
-    borderRadius: 12,
+    marginBottom: ONBOARDING_SPACING.LG,
+    borderRadius: ONBOARDING_BORDER_RADIUS.MD,
     borderWidth: 1,
-    borderColor: '#1f1f1f',
+    borderColor: ONBOARDING_COLORS.BORDER,
     overflow: 'hidden',
   },
   segmentButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: ONBOARDING_SPACING.SM + 4,
     alignItems: 'center',
   },
   segmentButtonActive: {
-    backgroundColor: '#111111',
+    backgroundColor: ONBOARDING_COLORS.SURFACE_ELEVATED,
   },
   segmentButtonText: {
-    fontFamily: 'Inter-Medium',
+    ...ONBOARDING_TYPOGRAPHY.BODY,
     fontSize: 16,
-    color: '#FFFFFF',
   },
   segmentButtonTextActive: {
     fontWeight: '600',
   },
   inputSection: {
-    marginBottom: 32,
+    marginBottom: ONBOARDING_SPACING.SECTION_GAP,
   },
   sectionTitle: {
-    fontFamily: 'Inter-SemiBold',
+    ...ONBOARDING_TYPOGRAPHY.BODY,
     fontSize: 18,
-    color: '#FFFFFF',
-    marginBottom: 16,
+    fontWeight: '600',
+    marginBottom: ONBOARDING_SPACING.MD,
   },
   sliderContainer: {
-    marginBottom: 16,
+    marginBottom: ONBOARDING_SPACING.MD,
   },
   sliderLabel: {
-    fontFamily: 'Inter-Regular',
+    ...ONBOARDING_TYPOGRAPHY.SUBTITLE,
     fontSize: 14,
-    color: '#9CA3AF',
-    marginBottom: 8,
+    marginBottom: ONBOARDING_SPACING.SM,
   },
   sliderValueContainer: {
     flexDirection: 'row',
@@ -358,47 +361,38 @@ const styles = StyleSheet.create({
     height: 40,
   },
   sliderValue: {
-    fontFamily: 'Inter-Medium',
+    ...ONBOARDING_TYPOGRAPHY.OPTION_TEXT,
     fontSize: 16,
-    color: '#FFFFFF',
     width: 60,
     textAlign: 'right',
   },
   confidenceTag: {
     alignSelf: 'flex-start',
-    backgroundColor: '#0a0a0a',
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginTop: 8,
+    backgroundColor: ONBOARDING_COLORS.SURFACE,
+    paddingVertical: ONBOARDING_SPACING.XS,
+    paddingHorizontal: ONBOARDING_SPACING.SM + 4,
+    borderRadius: ONBOARDING_BORDER_RADIUS.SM,
+    marginTop: ONBOARDING_SPACING.SM,
     borderWidth: 1,
-    borderColor: '#1f1f1f',
+    borderColor: ONBOARDING_COLORS.BORDER,
   },
   confidenceText: {
-    fontFamily: 'Inter-Medium',
+    ...ONBOARDING_TYPOGRAPHY.SUBTITLE,
     fontSize: 12,
-    color: '#9CA3AF',
+  },
+  helperTextContainer: {
+    paddingHorizontal: ONBOARDING_SPACING.PAGE_HORIZONTAL,
+    marginBottom: ONBOARDING_SPACING.SM,
+  },
+  helperText: {
+    ...ONBOARDING_TYPOGRAPHY.BODY,
+    fontSize: 15,
+    textAlign: 'center',
+    letterSpacing: 0.2,
   },
   buttonContainer: {
-    padding: 24,
-  },
-  button: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#1f1f1f',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  buttonText: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 16,
-    color: '#000000',
+    padding: ONBOARDING_SPACING.LG,
+    paddingBottom: 40,
   },
 });
 

@@ -1,18 +1,47 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Alert } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Alert, Animated } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import Icon from '../UI/Icon';
 
-const PostCard = ({ item, onLike, onSave, onComment, onMore, onShare }) => {
+const PostCard = ({ item, onLike, onSave, onComment, onViewComments, onMore, onShare }) => {
   const [expanded, setExpanded] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const longText = item.text.length > 200;
+  const [imageErrors, setImageErrors] = useState({});
+  const [likeAnimation] = useState(new Animated.Value(1));
+  const longText = item.text && item.text.length > 200;
+  
+  // Filter out invalid image URLs (local file paths that won't work)
+  const validImages = (item.images || []).filter(image => {
+    // Skip local file paths that won't work
+    if (image && image.startsWith('file:///var/mobile')) {
+      return false;
+    }
+    return image && image.trim().length > 0;
+  });
+
+  // Post type configuration
+  const getPostTypeConfig = (type) => {
+    const configs = {
+      progress: { color: '#4CAF50', icon: 'trending-up', label: 'Progress' },
+      tip: { color: '#FF9800', icon: 'bulb', label: 'Tip' },
+      question: { color: '#2196F3', icon: 'help-circle', label: 'Question' },
+      motivation: { color: '#E91E63', icon: 'heart', label: 'Motivation' }
+    };
+    return configs[type] || { color: '#666666', icon: 'document', label: 'Post' };
+  };
+
+  const postTypeConfig = getPostTypeConfig(item.type);
 
   // Profile Avatar Component with fallback
   const ProfileAvatar = ({ source, name, style }) => {
     if (imageError || !source || source.includes('placeholder')) {
+      // Show user's initial instead of icon
+      const initial = name ? name.charAt(0).toUpperCase() : '?';
       return (
-        <View style={[style, { backgroundColor: '#E0E0E0', justifyContent: 'center', alignItems: 'center' }]}>
-          <Icon name="person" size={20} color="#666666" />
+        <View style={[style, { backgroundColor: '#3B5FE3', justifyContent: 'center', alignItems: 'center' }]}>
+          <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '700' }}>
+            {initial}
+          </Text>
         </View>
       );
     }
@@ -46,31 +75,64 @@ const PostCard = ({ item, onLike, onSave, onComment, onMore, onShare }) => {
     return `${month}/${day}/${year}`;
   };
 
+  // Handle like with animation
+  const handleLike = () => {
+    Animated.sequence([
+      Animated.timing(likeAnimation, {
+        toValue: 1.2,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(likeAnimation, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    onLike(item.id);
+  };
+
   return (
-    <View style={styles.postCard}>
+    <LinearGradient
+      colors={["#F8FAFC", "#E2E8F0"]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.postCard}
+    >
       {/* Post Header */}
       <View style={styles.postHeader}>
         <View style={styles.postHeaderLeft}>
           <ProfileAvatar source={item.user.avatar} name={item.user.name} style={styles.avatar} />
-          <View>
-            <Text style={styles.username}>{item.user.name}</Text>
-            <Text style={styles.timestamp}>
-              {formatTimestamp(item.createdAt)}
-            </Text>
+          <View style={styles.userInfo}>
+            <View style={styles.usernameRow}>
+              <Text style={styles.username}>{item.user.name}</Text>
+              {item.user.age !== null && item.user.age !== undefined && (
+                <Text style={styles.userAge}> • {item.user.age}</Text>
+              )}
+            </View>
+            <View style={styles.metaRow}>
+              <Text style={styles.timestamp}>
+                {formatTimestamp(item.createdAt)}
+              </Text>
+              {item.heightTag && (
+                <View style={styles.heightTagContainer}>
+                  <Text style={styles.heightTag}>{item.heightTag}</Text>
+                </View>
+              )}
+            </View>
           </View>
-        </View>
-        <View style={styles.heightTagContainer}>
-          <Text style={styles.heightTag}>{item.heightTag}</Text>
         </View>
       </View>
 
       {/* Post Body */}
       <View style={styles.postBody}>
-        <Text style={styles.postText}>
-          {longText && !expanded
-            ? `${item.text.substring(0, 200)}...`
-            : item.text}
-        </Text>
+        {item.text && (
+          <Text style={styles.postText}>
+            {longText && !expanded
+              ? `${item.text.substring(0, 200)}...`
+              : item.text}
+          </Text>
+        )}
 
         {longText && (
           <TouchableOpacity onPress={() => setExpanded(!expanded)}>
@@ -81,38 +143,49 @@ const PostCard = ({ item, onLike, onSave, onComment, onMore, onShare }) => {
         )}
 
         {/* Images */}
-        {item.images.length > 0 && (
+        {validImages.length > 0 && (
           <View style={[
             styles.imageContainer,
-            item.images.length === 1 ? styles.singleImageContainer : styles.multipleImagesContainer
+            validImages.length === 1 ? styles.singleImageContainer : styles.multipleImagesContainer
           ]}>
-            {item.images.map((image, index) => (
-              <Image
-                key={index}
-                source={{ uri: image }}
-                style={[
-                  styles.postImage,
-                  item.images.length === 1 ? styles.singleImage : styles.gridImage
-                ]}
-              />
-            ))}
+            {validImages.map((image, index) => {
+              // Skip if this image already failed to load
+              if (imageErrors[index]) return null;
+              
+              return (
+                <Image
+                  key={index}
+                  source={{ uri: image }}
+                  style={[
+                    styles.postImage,
+                    validImages.length === 1 ? styles.singleImage : styles.gridImage
+                  ]}
+                  onError={() => {
+                    setImageErrors(prev => ({ ...prev, [index]: true }));
+                  }}
+                />
+              );
+            })}
           </View>
         )}
       </View>
 
       {/* Post Footer */}
       <View style={styles.postFooter}>
-        <TouchableOpacity
-          style={styles.footerAction}
-          onPress={() => onLike(item.id)}
-        >
-          <Icon
-            name={item.liked ? 'heart' : 'heart-outline'}
-            size={22}
-            color={item.liked ? '#FF3B30' : '#666666'}
-          />
-          <Text style={styles.actionText}>{item.likeCount}</Text>
-        </TouchableOpacity>
+        <Animated.View style={{ transform: [{ scale: likeAnimation }] }}>
+          <TouchableOpacity
+            style={styles.footerAction}
+            onPress={handleLike}
+            activeOpacity={0.7}
+          >
+            <Icon
+              name={item.liked ? 'heart' : 'heart-outline'}
+              size={22}
+              color={item.liked ? '#FF3B30' : '#666666'}
+            />
+            <Text style={[styles.actionText, item.liked && styles.likedText]}>{item.likeCount}</Text>
+          </TouchableOpacity>
+        </Animated.View>
 
         <TouchableOpacity
           style={styles.footerAction}
@@ -139,57 +212,35 @@ const PostCard = ({ item, onLike, onSave, onComment, onMore, onShare }) => {
         >
           <Icon name="share-outline" size={20} color="#666666" />
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.footerAction}
-          onPress={() => onMore(item.id)}
-        >
-          <Icon name="ellipsis-horizontal" size={20} color="#666666" />
-        </TouchableOpacity>
       </View>
 
-      {/* Comments Preview */}
-      {item.comments.length > 0 && (
-        <View style={styles.commentsPreview}>
-          {item.comments.slice(0, 2).map(comment => (
-            <View key={comment.id} style={styles.commentItem}>
-              <ProfileAvatar source={comment.user.avatar} name={comment.user.name} style={styles.commentAvatar} />
-              <View style={styles.commentContent}>
-                <Text style={styles.commentText}>
-                  <Text style={styles.commentUsername}>{comment.user.name}</Text>{' '}
-                  {comment.text}
-                </Text>
-                <Text style={styles.commentTimestamp}>
-                  {formatTimestamp(comment.createdAt)}
-                </Text>
-              </View>
-            </View>
-          ))}
-
-          {item.commentCount > 2 && (
-            <TouchableOpacity onPress={onComment}>
-              <Text style={styles.viewAllComments}>
-                View all {item.commentCount} comments
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
+      {/* View all comments link */}
+      {item.commentCount > 0 && (
+        <TouchableOpacity onPress={() => onViewComments(item.id)} style={styles.viewAllCommentsContainer}>
+          <Text style={styles.viewAllComments}>
+            View all {item.commentCount} comment{item.commentCount !== 1 ? 's' : ''}
+          </Text>
+        </TouchableOpacity>
       )}
-    </View>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   postCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    // Match the light, premium gradient feel of the MAIN GROWTH FACTORS card
+    borderRadius: 20,
     marginVertical: 8,
-    padding: 16,
+    marginHorizontal: 10,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
   },
   postHeader: {
     flexDirection: 'row',
@@ -202,48 +253,89 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     marginRight: 12,
+    borderWidth: 0,
+    overflow: 'hidden',
+  },
+  userInfo: {
+    flex: 1,
+  },
+  usernameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
   },
   username: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#000000',
+    color: '#0F172A',
+  },
+  userAge: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   timestamp: {
-    fontSize: 12,
-    color: '#AAAAAA',
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  postTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    gap: 4,
+  },
+  postTypeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   heightTagContainer: {
-    backgroundColor: '#F8F9FA',
-    paddingHorizontal: 10,
+    backgroundColor: '#E5E7EB',
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+    alignItems: 'center',
+    marginLeft: 8,
   },
   heightTag: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#666666',
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#111827',
+    textAlign: 'center',
   },
   postBody: {
-    marginBottom: 12,
+    marginBottom: 0,
   },
   postText: {
-    fontSize: 16,
-    lineHeight: 22,
-    color: '#000000',
-    marginBottom: 12,
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#111827',
+    marginBottom: 0,
+    fontWeight: '400',
   },
   readMoreText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#3B5FE3',
-    marginBottom: 12,
+    color: '#3B82F6',
+    marginBottom: 10,
   },
   imageContainer: {
-    marginTop: 8,
+    marginTop: 12,
   },
   singleImageContainer: {
     height: 200,
@@ -270,18 +362,26 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#E5E5E5',
+    borderTopColor: '#E5E7EB',
+    marginTop: 12,
   },
   footerAction: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    backgroundColor: 'rgba(15,23,42,0.05)',
   },
   actionText: {
-    marginLeft: 4,
-    fontSize: 14,
-    color: '#666666',
+    marginLeft: 5,
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  likedText: {
+    color: '#FB7185',
+    fontWeight: '600',
   },
   commentsPreview: {
     marginTop: 12,
@@ -303,23 +403,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   commentText: {
-    fontSize: 14,
-    color: '#000000',
+    fontSize: 13,
+    color: '#111827',
     lineHeight: 18,
   },
   commentUsername: {
     fontWeight: '600',
   },
   commentTimestamp: {
-    fontSize: 12,
-    color: '#AAAAAA',
+    fontSize: 11,
+    color: '#9CA3AF',
     marginTop: 2,
   },
+  viewAllCommentsContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
   viewAllComments: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
-    color: '#666666',
-    marginTop: 4,
+    color: '#3B82F6',
   },
 });
 

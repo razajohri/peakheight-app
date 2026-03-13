@@ -50,7 +50,7 @@ export class RealtimeService {
         table: 'posts',
         filter: 'is_public=eq.true',
       }, (payload) => {
-        callback(payload);
+        callback({ eventType: 'INSERT', ...payload });
       })
       .on('postgres_changes', {
         event: 'UPDATE',
@@ -58,7 +58,23 @@ export class RealtimeService {
         table: 'posts',
         filter: 'is_public=eq.true',
       }, (payload) => {
-        callback(payload);
+        callback({ eventType: 'UPDATE', ...payload });
+      })
+      .subscribe();
+
+    return subscription;
+  }
+
+  // Subscribe to user join events (for Tribe notifications)
+  static subscribeToJoinEvents(callback) {
+    const subscription = supabase
+      .channel('join-events')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'user_join_events',
+      }, (payload) => {
+        callback({ eventType: 'INSERT', ...payload });
       })
       .subscribe();
 
@@ -303,6 +319,11 @@ export class RealtimeService {
       subscriptions.push(this.subscribeToCommunityUpdates(callbacks.onCommunityUpdate));
     }
 
+    // Join events
+    if (callbacks.onJoinEvent) {
+      subscriptions.push(this.subscribeToJoinEvents(callbacks.onJoinEvent));
+    }
+
     // Badge updates
     if (callbacks.onBadgeUpdate) {
       subscriptions.push(this.subscribeToBadgeUpdates(userId, callbacks.onBadgeUpdate));
@@ -418,6 +439,7 @@ export class RealtimeService {
 export const subscribeToHabitUpdates = RealtimeService.subscribeToHabitUpdates;
 export const subscribeToStreakUpdates = RealtimeService.subscribeToStreakUpdates;
 export const subscribeToCommunityUpdates = RealtimeService.subscribeToCommunityUpdates;
+export const subscribeToJoinEvents = RealtimeService.subscribeToJoinEvents;
 export const subscribeToPostInteractions = RealtimeService.subscribeToPostInteractions;
 export const subscribeToBadgeUpdates = RealtimeService.subscribeToBadgeUpdates;
 export const subscribeToAIInsights = RealtimeService.subscribeToAIInsights;

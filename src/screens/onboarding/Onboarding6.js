@@ -1,21 +1,105 @@
 // Onboarding6.js (Page 6 - How tall are your parents?)
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Modal, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import Slider from '@react-native-community/slider';
+import FloatingStars from '../../components/UI/FloatingStars';
+import ProgressHeader from '../../components/onboarding/ProgressHeader';
+import OnboardingButton from '../../components/onboarding/OnboardingButton';
+import HapticFeedback from '../../utils/hapticFeedback';
+import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
+import { 
+  ONBOARDING_TYPOGRAPHY, 
+  ONBOARDING_SPACING,
+  ONBOARDING_COLORS,
+  ONBOARDING_BORDER_RADIUS 
+} from '../../utils/onboardingConstants';
 
 const Onboarding6 = ({ navigation, data, updateData }) => {
   const [measurementSystem, setMeasurementSystem] = useState(data.parentMeasurementSystem || 'imperial'); // 'imperial' or 'metric'
+  const [infoModalVisible, setInfoModalVisible] = useState(false);
+  const modalScale = React.useRef(new Animated.Value(0)).current;
+  const modalOpacity = React.useRef(new Animated.Value(0)).current;
 
-  // Imperial
+  // Imperial - Default: Both 0'0"
   const [fatherFeet, setFatherFeet] = useState(data.fatherFeet || 0);
   const [fatherInches, setFatherInches] = useState(data.fatherInches || 0);
   const [motherFeet, setMotherFeet] = useState(data.motherFeet || 0);
   const [motherInches, setMotherInches] = useState(data.motherInches || 0);
 
-  // Metric
+  // Metric - Default: Both 0cm
   const [fatherCm, setFatherCm] = useState(data.fatherCm || 0);
   const [motherCm, setMotherCm] = useState(data.motherCm || 0);
+
+  // Initialize default values if not set
+  useEffect(() => {
+    if (!data.fatherFeet && !data.fatherCm) {
+      // Set defaults to 0
+      const defaultFatherFeet = 0;
+      const defaultFatherInches = 0;
+      const defaultMotherFeet = 0;
+      const defaultMotherInches = 0;
+      
+      const fatherHeightInCm = (defaultFatherFeet * 30.48) + (defaultFatherInches * 2.54);
+      const motherHeightInCm = (defaultMotherFeet * 30.48) + (defaultMotherInches * 2.54);
+      
+      updateData({
+        fatherFeet: defaultFatherFeet,
+        fatherInches: defaultFatherInches,
+        motherFeet: defaultMotherFeet,
+        motherInches: defaultMotherInches,
+        parentHeightFather: fatherHeightInCm,
+        parentHeightMother: motherHeightInCm,
+        parentMeasurementSystem: 'imperial'
+      });
+    }
+  }, []);
+
+  // Show info modal when page loads
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setInfoModalVisible(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      
+      // Animate modal in
+      Animated.parallel([
+        Animated.spring(modalScale, {
+          toValue: 1,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+        Animated.timing(modalOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  const closeInfoModal = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setInfoModalVisible(false);
+    
+    // Reset animation values immediately
+    Animated.parallel([
+      Animated.timing(modalScale, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(modalOpacity, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
 
   const updateParentHeights = () => {
     if (measurementSystem === 'imperial') {
@@ -51,24 +135,34 @@ const Onboarding6 = ({ navigation, data, updateData }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: '40%' }]} />
-        </View>
-        <Text style={styles.progressText}>6/15</Text>
-      </View>
+      <FloatingStars />
+      <ProgressHeader 
+        currentStep={7} 
+        onBack={() => navigation.goBack()} 
+      />
 
-      <ScrollView style={styles.scrollView}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.contentContainer}>
-          <Text style={styles.title}>How tall are your parents?</Text>
+          <View style={styles.titleContainer}>
+            <Text style={styles.title}>How tall are your parents?</Text>
+          </View>
 
-          <View style={styles.segmentContainer}>
+          <View
+            style={styles.segmentContainer}
+          >
             <TouchableOpacity
               style={[
                 styles.segmentButton,
                 measurementSystem === 'imperial' && styles.segmentButtonActive
               ]}
-              onPress={() => setMeasurementSystem('imperial')}
+              onPress={async () => {
+                try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+                setMeasurementSystem('imperial');
+              }}
             >
               <Text style={[
                 styles.segmentButtonText,
@@ -81,7 +175,10 @@ const Onboarding6 = ({ navigation, data, updateData }) => {
                 styles.segmentButton,
                 measurementSystem === 'metric' && styles.segmentButtonActive
               ]}
-              onPress={() => setMeasurementSystem('metric')}
+              onPress={async () => {
+                try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+                setMeasurementSystem('metric');
+              }}
             >
               <Text style={[
                 styles.segmentButtonText,
@@ -90,7 +187,9 @@ const Onboarding6 = ({ navigation, data, updateData }) => {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.inputSection}>
+          <View
+            style={styles.inputSection}
+          >
             <Text style={styles.sectionTitle}>Father's height</Text>
 
             {measurementSystem === 'imperial' ? (
@@ -100,11 +199,12 @@ const Onboarding6 = ({ navigation, data, updateData }) => {
                   <View style={styles.sliderValueContainer}>
                     <Slider
                       style={styles.slider}
-                      minimumValue={4}
+                      minimumValue={0}
                       maximumValue={7}
                       step={1}
                       value={fatherFeet}
                       onValueChange={(value) => {
+                        HapticFeedback.selection();
                         setFatherFeet(value);
                         updateParentHeights();
                       }}
@@ -126,6 +226,7 @@ const Onboarding6 = ({ navigation, data, updateData }) => {
                       step={1}
                       value={fatherInches}
                       onValueChange={(value) => {
+                        HapticFeedback.selection();
                         setFatherInches(value);
                         updateParentHeights();
                       }}
@@ -143,11 +244,12 @@ const Onboarding6 = ({ navigation, data, updateData }) => {
                 <View style={styles.sliderValueContainer}>
                   <Slider
                     style={styles.slider}
-                    minimumValue={150}
+                    minimumValue={0}
                     maximumValue={220}
                     step={1}
                     value={fatherCm}
                       onValueChange={(value) => {
+                        HapticFeedback.selection();
                         setFatherCm(value);
                         updateParentHeights();
                       }}
@@ -161,7 +263,9 @@ const Onboarding6 = ({ navigation, data, updateData }) => {
             )}
           </View>
 
-          <View style={styles.inputSection}>
+          <View
+            style={styles.inputSection}
+          >
             <Text style={styles.sectionTitle}>Mother's height</Text>
 
             {measurementSystem === 'imperial' ? (
@@ -171,11 +275,12 @@ const Onboarding6 = ({ navigation, data, updateData }) => {
                   <View style={styles.sliderValueContainer}>
                     <Slider
                       style={styles.slider}
-                      minimumValue={4}
+                      minimumValue={0}
                       maximumValue={6}
                       step={1}
                       value={motherFeet}
                       onValueChange={(value) => {
+                        HapticFeedback.selection();
                         setMotherFeet(value);
                         updateParentHeights();
                       }}
@@ -197,6 +302,7 @@ const Onboarding6 = ({ navigation, data, updateData }) => {
                       step={1}
                       value={motherInches}
                       onValueChange={(value) => {
+                        HapticFeedback.selection();
                         setMotherInches(value);
                         updateParentHeights();
                       }}
@@ -214,11 +320,12 @@ const Onboarding6 = ({ navigation, data, updateData }) => {
                 <View style={styles.sliderValueContainer}>
                   <Slider
                     style={styles.slider}
-                    minimumValue={140}
+                    minimumValue={0}
                     maximumValue={190}
                     step={1}
                     value={motherCm}
                       onValueChange={(value) => {
+                        HapticFeedback.selection();
                         setMotherCm(value);
                         updateParentHeights();
                       }}
@@ -234,7 +341,8 @@ const Onboarding6 = ({ navigation, data, updateData }) => {
 
           <TouchableOpacity
             style={styles.skipButton}
-            onPress={() => {
+            onPress={async () => {
+              try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
               updateParentHeights();
               // Clear parent height fields and proceed
               updateData({
@@ -258,13 +366,98 @@ const Onboarding6 = ({ navigation, data, updateData }) => {
       </ScrollView>
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => navigation.navigate('Onboarding7')}
-        >
-          <Text style={styles.buttonText}>Continue</Text>
-        </TouchableOpacity>
+        <OnboardingButton
+          title="Continue"
+          onPress={async () => {
+            // Check if heights are set (not 0 or null)
+            const fatherHeightSet = measurementSystem === 'imperial' 
+              ? (fatherFeet > 0 || fatherInches > 0)
+              : (fatherCm > 0);
+            const motherHeightSet = measurementSystem === 'imperial'
+              ? (motherFeet > 0 || motherInches > 0)
+              : (motherCm > 0);
+
+            if (!fatherHeightSet || !motherHeightSet) {
+              Alert.alert(
+                'Parents\' Heights Required',
+                'Please enter both your father\'s and mother\'s heights, or click "I don\'t know" to skip.',
+                [{ text: 'OK', style: 'default' }]
+              );
+              return;
+            }
+
+            try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+            updateParentHeights();
+            navigation.navigate('Onboarding7');
+          }}
+        />
       </View>
+
+      {/* Info Modal */}
+      <Modal
+        animationType="none"
+        transparent={true}
+        visible={infoModalVisible}
+        onRequestClose={closeInfoModal}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={closeInfoModal}
+        >
+          <Animated.View 
+            style={[
+              styles.modalContainer,
+              {
+                opacity: modalOpacity,
+                transform: [{ scale: modalScale }]
+              }
+            ]}
+          >
+            <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+              <LinearGradient
+                colors={['#FFFFFF', '#F8FAFC']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.modalContent}
+              >
+                {/* Decorative background circle */}
+                <View style={styles.modalDecorativeCircle} />
+                
+                <LinearGradient
+                  colors={['#000000', '#1a1a1a']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.modalIconContainer}
+                >
+                  <Ionicons name="people" size={40} color="#FFFFFF" />
+                </LinearGradient>
+                
+                <Text style={styles.modalTitle}>" Why we ask about your parents height? "</Text>
+                
+                <Text style={styles.modalText}>
+                  Telling us your parents' height helps us understand your genetic potential and create a more accurate growth plan tailored specifically to you.
+                </Text>
+                
+                <TouchableOpacity
+                  style={styles.modalButton}
+                  onPress={closeInfoModal}
+                  activeOpacity={0.85}
+                >
+                  <LinearGradient
+                    colors={['#000000', '#1a1a1a']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                    style={styles.modalButtonGradient}
+                  >
+                    <Text style={styles.modalButtonText}>Got it</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -272,87 +465,71 @@ const Onboarding6 = ({ navigation, data, updateData }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 4,
-    marginBottom: 24,
-  },
-  progressBar: {
-    flex: 1,
-    height: 4,
-    backgroundColor: '#1f1f1f',
-    borderRadius: 2,
-    marginRight: 12,
-  },
-  progressFill: {
-    height: 4,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 2,
-  },
-  progressText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: '#9CA3AF',
+    backgroundColor: ONBOARDING_COLORS.BACKGROUND,
   },
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: ONBOARDING_SPACING.MD,
+  },
   contentContainer: {
-    paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingHorizontal: ONBOARDING_SPACING.PAGE_HORIZONTAL,
+    paddingTop: ONBOARDING_SPACING.XS,
+  },
+  titleContainer: {
+    marginBottom: ONBOARDING_SPACING.MD,
   },
   title: {
-    fontFamily: 'Inter-Bold',
+    ...ONBOARDING_TYPOGRAPHY.PAGE_TITLE,
     fontSize: 28,
-    color: '#FFFFFF',
-    marginBottom: 24,
-    letterSpacing: -0.5,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  subtitle: {
+    ...ONBOARDING_TYPOGRAPHY.SUBTITLE,
+    textAlign: 'center',
+    marginBottom: ONBOARDING_SPACING.MD,
   },
   segmentContainer: {
     flexDirection: 'row',
-    marginBottom: 24,
-    borderRadius: 12,
+    marginBottom: ONBOARDING_SPACING.MD,
+    borderRadius: ONBOARDING_BORDER_RADIUS.MD,
     borderWidth: 1,
-    borderColor: '#1f1f1f',
+    borderColor: ONBOARDING_COLORS.BORDER,
     overflow: 'hidden',
   },
   segmentButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: ONBOARDING_SPACING.SM + 4,
     alignItems: 'center',
   },
   segmentButtonActive: {
-    backgroundColor: '#111111',
+    backgroundColor: ONBOARDING_COLORS.SURFACE_ELEVATED,
   },
   segmentButtonText: {
-    fontFamily: 'Inter-Medium',
+    ...ONBOARDING_TYPOGRAPHY.BODY,
     fontSize: 16,
-    color: '#FFFFFF',
   },
   segmentButtonTextActive: {
     fontWeight: '600',
   },
   inputSection: {
-    marginBottom: 32,
+    marginBottom: ONBOARDING_SPACING.LG,
   },
   sectionTitle: {
-    fontFamily: 'Inter-SemiBold',
+    ...ONBOARDING_TYPOGRAPHY.BODY,
     fontSize: 18,
-    color: '#FFFFFF',
-    marginBottom: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
   },
   sliderContainer: {
-    marginBottom: 16,
+    marginBottom: ONBOARDING_SPACING.SM + 4,
   },
   sliderLabel: {
-    fontFamily: 'Inter-Regular',
+    ...ONBOARDING_TYPOGRAPHY.SUBTITLE,
     fontSize: 14,
-    color: '#9CA3AF',
-    marginBottom: 8,
+    marginBottom: ONBOARDING_SPACING.SM,
   },
   sliderValueContainer: {
     flexDirection: 'row',
@@ -360,45 +537,118 @@ const styles = StyleSheet.create({
   },
   slider: {
     flex: 1,
-    height: 40,
+    height: 32,
   },
   sliderValue: {
-    fontFamily: 'Inter-Medium',
+    ...ONBOARDING_TYPOGRAPHY.OPTION_TEXT,
     fontSize: 16,
-    color: '#FFFFFF',
     width: 60,
     textAlign: 'right',
   },
   skipButton: {
     alignSelf: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingVertical: ONBOARDING_SPACING.SM,
+    paddingHorizontal: ONBOARDING_SPACING.LG,
+    marginTop: -10,
   },
   skipButtonText: {
-    fontFamily: 'Inter-Medium',
+    ...ONBOARDING_TYPOGRAPHY.BODY,
     fontSize: 16,
-    color: '#9CA3AF',
+    color: ONBOARDING_COLORS.TEXT_SECONDARY,
   },
   buttonContainer: {
-    padding: 24,
+    padding: ONBOARDING_SPACING.LG,
+    paddingBottom: 40,
   },
-  button: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 14,
-    borderRadius: 12,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#1f1f1f',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 4,
+    padding: ONBOARDING_SPACING.LG,
   },
-  buttonText: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 16,
+  modalContainer: {
+    width: '100%',
+    maxWidth: 380,
+  },
+  modalContent: {
+    borderRadius: 28,
+    padding: ONBOARDING_SPACING.LG + 12,
+    alignItems: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.4,
+    shadowRadius: 40,
+    elevation: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  modalDecorativeCircle: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
+    top: -80,
+    right: -80,
+  },
+  modalIconContainer: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: ONBOARDING_SPACING.LG + 4,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
+    overflow: 'hidden',
+  },
+  modalTitle: {
+    ...ONBOARDING_TYPOGRAPHY.PAGE_TITLE,
+    fontSize: 26,
+    fontWeight: '800',
+    marginBottom: ONBOARDING_SPACING.MD + 4,
+    textAlign: 'center',
     color: '#000000',
+    letterSpacing: -0.5,
+  },
+  modalText: {
+    ...ONBOARDING_TYPOGRAPHY.BODY,
+    fontSize: 16,
+    lineHeight: 24,
+    textAlign: 'center',
+    marginBottom: ONBOARDING_SPACING.LG + 12,
+    color: '#475569',
+    fontWeight: '500',
+  },
+  modalButton: {
+    width: '100%',
+    marginTop: ONBOARDING_SPACING.SM,
+    borderRadius: ONBOARDING_BORDER_RADIUS.BUTTON,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalButtonGradient: {
+    paddingVertical: ONBOARDING_SPACING.BUTTON_PADDING_VERTICAL,
+    paddingHorizontal: ONBOARDING_SPACING.BUTTON_PADDING_HORIZONTAL,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 56,
+  },
+  modalButtonText: {
+    ...ONBOARDING_TYPOGRAPHY.BUTTON_TEXT,
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '600',
   },
 });
 

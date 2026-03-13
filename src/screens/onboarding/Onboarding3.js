@@ -1,85 +1,59 @@
-// Onboarding3.js (Page 3 - How old are you? Choose date of birth)
+// Onboarding3.js (Page 3 - Choose your gender)
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { View, Text, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import FloatingStars from '../../components/UI/FloatingStars';
+import ProgressHeader from '../../components/onboarding/ProgressHeader';
+import OnboardingButton from '../../components/onboarding/OnboardingButton';
+import { 
+  ONBOARDING_TYPOGRAPHY, 
+  ONBOARDING_SPACING,
+  ONBOARDING_COLORS,
+  ONBOARDING_BORDER_RADIUS,
+} from '../../utils/onboardingConstants';
 
 const Onboarding3 = ({ navigation, data, updateData }) => {
-  const [date, setDate] = useState(data.dateOfBirth ? new Date(data.dateOfBirth) : new Date(2000, 0, 1));
-  const [showPicker, setShowPicker] = useState(Platform.OS === 'ios');
-
-  const onChange = (event, selectedDate) => {
-    const currentDate = selectedDate || date;
-    setShowPicker(Platform.OS === 'ios');
-    setDate(currentDate);
-    updateData({ dateOfBirth: currentDate.toISOString() });
-  };
-
-  const showDatepicker = () => {
-    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
-    setShowPicker(true);
-  };
-
-  const formatDate = (date) => {
-    return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
-  };
+  const [email, setEmail] = useState(data.email || '');
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: '20%' }]} />
-        </View>
-        <Text style={styles.progressText}>3/15</Text>
-      </View>
+      <FloatingStars />
+      <ProgressHeader 
+        currentStep={3} 
+        onBack={() => navigation.goBack()} 
+      />
 
       <View style={styles.contentContainer}>
-        <Text style={styles.title}>How old are you?</Text>
-        <Text style={styles.subtitle}>Choose your date of birth</Text>
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>What&apos;s your best email?</Text>
+          <Text style={styles.subtitle}>(optional)</Text>
+        </View>
 
-        {Platform.OS === 'android' && (
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={showDatepicker}
-          >
-            <Text style={styles.dateButtonText}>{formatDate(date)}</Text>
-          </TouchableOpacity>
-        )}
-
-        {showPicker && (
-          <View style={styles.pickerContainer}>
-            <DateTimePicker
-              testID="dateTimePicker"
-              value={date}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={onChange}
-              maximumDate={new Date()}
-              minimumDate={new Date(1920, 0, 1)}
-              textColor="#FFFFFF"
-              style={styles.datePicker}
-            />
-          </View>
-        )}
-
-        {date.getFullYear() > new Date().getFullYear() - 18 && (
-          <Text style={styles.consentText}>
-            Parent/guardian consent required for users under 18
+        <View style={styles.emailContainer}>
+          <Text style={styles.emailSubtitle}>
+            We&apos;ll send your plan and important updates here.
           </Text>
-        )}
+          <TextInput
+            style={styles.emailInput}
+            placeholder=""
+            placeholderTextColor={ONBOARDING_COLORS.TEXT_SECONDARY}
+            value={email}
+            onChangeText={(text) => {
+              setEmail(text);
+              updateData({ email: text.trim() });
+            }}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
       </View>
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={async () => {
-            try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
-            navigation.navigate('Onboarding4');
-          }}
-        >
-          <Text style={styles.buttonText}>Continue</Text>
-        </TouchableOpacity>
+        <OnboardingButton
+          title="Continue"
+          onPress={() => navigation.navigate('Onboarding4')}
+        />
       </View>
     </SafeAreaView>
   );
@@ -88,97 +62,114 @@ const Onboarding3 = ({ navigation, data, updateData }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 4,
-    marginBottom: 24,
-  },
-  progressBar: {
-    flex: 1,
-    height: 4,
-    backgroundColor: '#1f1f1f',
-    borderRadius: 2,
-    marginRight: 12,
-  },
-  progressFill: {
-    height: 4,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 2,
-  },
-  progressText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: '#9CA3AF',
+    backgroundColor: ONBOARDING_COLORS.BACKGROUND,
   },
   contentContainer: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: ONBOARDING_SPACING.PAGE_HORIZONTAL,
+    paddingTop: ONBOARDING_SPACING.PAGE_VERTICAL,
+  },
+  titleContainer: {
+    marginBottom: ONBOARDING_SPACING.SECTION_GAP,
   },
   title: {
-    fontFamily: 'Inter-Bold',
+    ...ONBOARDING_TYPOGRAPHY.PAGE_TITLE,
     fontSize: 28,
-    color: '#FFFFFF',
-    marginBottom: 8,
-    letterSpacing: -0.5,
+    marginBottom: ONBOARDING_SPACING.SM,
+    textAlign: 'center',
   },
   subtitle: {
-    fontFamily: 'Inter-Regular',
+    ...ONBOARDING_TYPOGRAPHY.SUBTITLE,
+    textAlign: 'center',
+  },
+  pickerWrapper: {
+    // No longer used (was for date picker)
+  },
+  emailContainer: {
+    marginTop: ONBOARDING_SPACING.LG,
+    paddingHorizontal: 4,
+  },
+  emailTitle: {
+    ...ONBOARDING_TYPOGRAPHY.PAGE_TITLE,
+    fontSize: 24,
+    textAlign: 'center',
+    marginBottom: ONBOARDING_SPACING.SM,
+  },
+  emailSubtitle: {
+    ...ONBOARDING_TYPOGRAPHY.SUBTITLE,
+    textAlign: 'center',
+    marginBottom: ONBOARDING_SPACING.SM,
+  },
+  emailInput: {
+    borderRadius: ONBOARDING_BORDER_RADIUS.MD,
+    borderWidth: 1,
+    borderColor: ONBOARDING_COLORS.BORDER,
+    paddingHorizontal: ONBOARDING_SPACING.MD,
+    paddingVertical: ONBOARDING_SPACING.SM,
+    color: ONBOARDING_COLORS.TEXT_PRIMARY,
+    backgroundColor: ONBOARDING_COLORS.SURFACE,
     fontSize: 16,
-    color: '#9CA3AF',
-    marginBottom: 32,
   },
   dateButton: {
-    borderWidth: 1,
-    borderColor: '#1f1f1f',
-    backgroundColor: '#0a0a0a',
-    borderRadius: 12,
-    padding: 16,
+    flexDirection: 'row',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: ONBOARDING_COLORS.BORDER,
+    backgroundColor: ONBOARDING_COLORS.SURFACE,
+    borderRadius: ONBOARDING_BORDER_RADIUS.LG,
+    padding: ONBOARDING_SPACING.LG + 4,
+    marginBottom: ONBOARDING_SPACING.MD + 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+    position: 'relative',
+  },
+  dateButtonStatic: {
+    opacity: 0.8,
+  },
+  dateIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    backgroundColor: ONBOARDING_COLORS.SURFACE_ELEVATED,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: ONBOARDING_SPACING.MD,
+  },
+  dateTextContainer: {
+    flex: 1,
+  },
+  dateLabel: {
+    ...ONBOARDING_TYPOGRAPHY.SUBTITLE,
+    fontSize: 14,
+    marginBottom: ONBOARDING_SPACING.XS,
   },
   dateButtonText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 18,
-    color: '#FFFFFF',
+    ...ONBOARDING_TYPOGRAPHY.OPTION_TEXT,
+    fontSize: 20,
   },
   pickerContainer: {
-    backgroundColor: Platform.OS === 'ios' ? '#0a0a0a' : 'transparent',
-    borderRadius: 12,
-    marginTop: 16,
+    backgroundColor: ONBOARDING_COLORS.SURFACE,
+    borderRadius: ONBOARDING_BORDER_RADIUS.MD,
+    marginTop: ONBOARDING_SPACING.LG,
+    alignItems: 'center',
+    overflow: 'hidden',
   },
   datePicker: {
     width: '100%',
-    height: 120,
+    height: 200,
   },
   consentText: {
-    fontFamily: 'Inter-Regular',
+    ...ONBOARDING_TYPOGRAPHY.SUBTITLE,
     fontSize: 14,
-    color: '#9CA3AF',
-    marginTop: 16,
+    marginTop: ONBOARDING_SPACING.MD,
+    textAlign: 'center',
   },
   buttonContainer: {
-    padding: 24,
-  },
-  button: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#1f1f1f',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  buttonText: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 16,
-    color: '#000000',
+    padding: ONBOARDING_SPACING.LG,
+    paddingBottom: 40,
   },
 });
 

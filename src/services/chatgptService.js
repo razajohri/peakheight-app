@@ -4,25 +4,44 @@ const CHATGPT_API_URL = 'https://api.openai.com/v1/chat/completions';
 
 export const generateDailyTasks = async (userProfile = {}) => {
   try {
-    const prompt = `Generate 5 daily height growth tasks for a person focused on increasing their height.
-    The tasks should be practical, achievable, and related to height growth activities like:
-    - Physical exercises and stretches
-    - Nutrition and supplements
-    - Sleep and recovery
-    - Posture improvement
-    - Lifestyle habits
+    const prompt = `Generate 4 science-based daily height growth tasks for a person focused on maximizing their height potential.
+
+    SCIENTIFIC FOUNDATION:
+    - Growth hormone peaks during deep sleep (10pm-2am)
+    - Protein (1.2g/kg body weight) and calcium (1000mg) are essential for bone growth
+    - Stretching, hanging, and swimming can decompress the spine
+    - Proper posture can add 1-2 inches of apparent height
+    - Chronic stress increases cortisol, inhibiting growth hormone
+
+    TASK CATEGORIES (select 4 different ones):
+    1. SLEEP: Optimize sleep quality, duration (8-9 hours), and timing
+    2. NUTRITION: Focus on protein, calcium, vitamin D, zinc, and hydration
+    3. EXERCISE: Stretching, hanging, swimming, resistance training
+    4. POSTURE: Spinal alignment, ergonomic setup, posture exercises
+    5. RECOVERY: Stress management, meditation, breathing exercises
+    6. MEASUREMENT: Track progress, set goals, monitor results
+
+    REQUIREMENTS:
+    - Each task must be specific, actionable, and achievable today
+    - Include scientific reasoning for each task
+    - Tasks should be 5-30 minutes (except sleep tasks)
+    - No medical claims or supplement recommendations
+    - Focus on lifestyle habits that support growth
 
     Return the response as a JSON array with this exact format:
     [
       {
         "id": 1,
-        "title": "Task description",
+        "title": "Specific task title",
         "emoji": "relevant emoji",
-        "completed": false
+        "category": "sleep|nutrition|exercise|posture|recovery|measurement",
+        "description": "Detailed instruction with scientific benefit",
+        "estimated_time": "5 minutes|10 minutes|15 minutes|20 minutes|30 minutes|Tonight",
+        "science": "Brief scientific explanation of why this helps height growth"
       }
     ]
 
-    Make sure each task is specific, actionable, and includes an appropriate emoji.`;
+    Make each task practical, science-based, and focused on real height growth results.`;
 
     const response = await fetch(CHATGPT_API_URL, {
       method: 'POST',
@@ -58,7 +77,7 @@ export const generateDailyTasks = async (userProfile = {}) => {
     const tasks = JSON.parse(content);
 
     // Validate the response format
-    if (!Array.isArray(tasks) || tasks.length !== 5) {
+    if (!Array.isArray(tasks) || tasks.length !== 4) {
       throw new Error('Invalid task format received from ChatGPT API');
     }
 
@@ -73,11 +92,46 @@ export const generateDailyTasks = async (userProfile = {}) => {
 
 const getFallbackTasks = () => {
   return [
-    { id: 1, title: 'Morning stretching routine (15 min)', emoji: '🤸', completed: false },
-    { id: 2, title: 'Drink protein shake with calcium', emoji: '🥤', completed: false },
-    { id: 3, title: 'Take height growth supplements', emoji: '💊', completed: false },
-    { id: 4, title: 'Practice good posture exercises', emoji: '🧘', completed: false },
-    { id: 5, title: 'Get 8+ hours of quality sleep', emoji: '😴', completed: false },
+    {
+      id: 1,
+      title: 'Protein Breakfast',
+      emoji: '🥚',
+      category: 'nutrition',
+      description: 'Eat 25g+ protein within 1 hour of waking (eggs, Greek yogurt, protein shake)',
+      estimated_time: '10 minutes',
+      science: 'Morning protein supports muscle and bone growth throughout the day',
+      completed: false
+    },
+    {
+      id: 2,
+      title: 'Sleep Schedule',
+      emoji: '🛏️',
+      category: 'sleep',
+      description: 'Set consistent bedtime and wake time for 8-9 hours of sleep',
+      estimated_time: 'Tonight',
+      science: 'Consistent sleep schedule regulates growth hormone production',
+      completed: false
+    },
+    {
+      id: 3,
+      title: 'Posture Check',
+      emoji: '🧍',
+      category: 'posture',
+      description: 'Stand against wall: heels, glutes, shoulders, head touching. Hold 60 seconds',
+      estimated_time: '5 minutes',
+      science: 'Wall exercises help establish proper spinal alignment',
+      completed: false
+    },
+    {
+      id: 4,
+      title: 'Deep Breathing',
+      emoji: '🌬️',
+      category: 'recovery',
+      description: 'Practice 4-4-4-4 breathing for 5 minutes to reduce stress',
+      estimated_time: '5 minutes',
+      science: 'Deep breathing reduces cortisol and promotes relaxation',
+      completed: false
+    },
   ];
 };
 
@@ -85,27 +139,42 @@ export const generatePersonalizedTasks = async (userProfile) => {
   try {
     const { age, currentHeight, targetHeight, preferences = {} } = userProfile;
 
-    const prompt = `Generate 5 personalized daily height growth tasks for a ${age}-year-old person who is currently ${currentHeight} and wants to reach ${targetHeight}.
+    const prompt = `Generate 4 personalized, science-based daily height growth tasks for a ${age}-year-old person who is currently ${currentHeight} and wants to reach ${targetHeight}.
 
-    Consider these preferences: ${JSON.stringify(preferences)}
+    USER PROFILE:
+    - Age: ${age} years old
+    - Current Height: ${currentHeight}
+    - Target Height: ${targetHeight}
+    - Preferences: ${JSON.stringify(preferences)}
 
-    Focus on:
-    - Age-appropriate exercises
-    - Nutrition tailored to their goals
-    - Realistic timeline expectations
-    - Safe and effective methods
+    SCIENTIFIC CONSIDERATIONS:
+    - Growth plates typically close by age 18-21 in males, 16-18 in females
+    - After growth plate closure, focus on posture, spinal decompression, and apparent height
+    - Nutrition needs vary by age and activity level
+    - Exercise intensity should match physical development stage
+
+    PERSONALIZATION FACTORS:
+    - Age-appropriate exercise intensity and type
+    - Realistic growth expectations based on age
+    - Nutritional needs for current life stage
+    - Safe progression for physical development
+    - Lifestyle factors and preferences
 
     Return the response as a JSON array with this exact format:
     [
       {
         "id": 1,
-        "title": "Specific task description",
+        "title": "Personalized task title",
         "emoji": "relevant emoji",
-        "completed": false
+        "category": "sleep|nutrition|exercise|posture|recovery|measurement",
+        "description": "Specific instruction tailored to their age and goals",
+        "estimated_time": "5 minutes|10 minutes|15 minutes|20 minutes|30 minutes|Tonight",
+        "science": "Age-appropriate scientific explanation",
+        "personalization": "Why this task is specifically good for their situation"
       }
     ]
 
-    Make each task specific, measurable, and achievable for their situation.`;
+    Make each task realistic, safe, and specifically beneficial for their age and goals.`;
 
     const response = await fetch(CHATGPT_API_URL, {
       method: 'POST',
@@ -139,7 +208,7 @@ export const generatePersonalizedTasks = async (userProfile) => {
 
     const tasks = JSON.parse(content);
 
-    if (!Array.isArray(tasks) || tasks.length !== 5) {
+    if (!Array.isArray(tasks) || tasks.length !== 4) {
       throw new Error('Invalid task format received from ChatGPT API');
     }
 

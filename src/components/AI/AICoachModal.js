@@ -10,19 +10,24 @@ import {
   Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Animated
 } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import Icon from '../UI/Icon';
 import * as Haptics from 'expo-haptics';
 import { useUser } from '../../contexts/UserContext';
 import { AICoachService } from '../../services/aiCoachService';
 
 const AICoachModal = ({ visible, onClose }) => {
   const { userProfile, userProgress } = useUser();
+  const insets = useSafeAreaInsets();
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [conversationHistory, setConversationHistory] = useState([]);
+  const [showQuickQuestions, setShowQuickQuestions] = useState(true);
   const scrollViewRef = useRef(null);
 
   // Initialize conversation when modal opens
@@ -50,7 +55,7 @@ const AICoachModal = ({ visible, onClose }) => {
       // Set initial welcome message
       const welcomeMessage = {
         id: 1,
-        text: `Hi ${userProfile?.name || 'there'}! 👋 I'm your AI Height Coach. I'm here to help you maximize your growth potential on your 120-day journey. You're currently on day ${userProgress?.current_day || 1} of your ${AICoachService.getPhaseForDay(userProgress?.current_day || 1)} phase! What would you like to know?`,
+        text: `Hi ${userProfile?.name || 'there'}! 👋 I'm Jacob, your personalized AI Height Coach. I'm trained on 1000+ research papers. I'm here to help you with your height growth journey. You're currently on day ${userProgress?.current_day || 1} of your ${AICoachService.getPhaseForDay(userProgress?.current_day || 1)} phase! What would you like to know?`,
         isUser: false,
         timestamp: new Date(),
         isTyping: false
@@ -62,7 +67,7 @@ const AICoachModal = ({ visible, onClose }) => {
       // Fallback welcome message
       setMessages([{
         id: 1,
-        text: "Hi! I'm your AI Height Coach. I'm here to help you maximize your growth potential. What would you like to know?",
+        text: "Hi! I'm Jacob, your Personal Height Growth Coach. I'm here to help you maximize your growth potential. What would you like to know?",
         isUser: false,
         timestamp: new Date(),
         isTyping: false
@@ -85,6 +90,11 @@ const AICoachModal = ({ visible, onClose }) => {
     setMessages(prev => [...prev, userMessage]);
     setMessage('');
     setIsLoading(true);
+    
+    // Hide quick questions after first user message
+    if (showQuickQuestions) {
+      setShowQuickQuestions(false);
+    }
 
     // Add typing indicator
     const typingMessage = {
@@ -204,24 +214,42 @@ const AICoachModal = ({ visible, onClose }) => {
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="pageSheet"
+      presentationStyle="fullScreen"
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      <View style={styles.container}>
+        <KeyboardAvoidingView
+          style={styles.keyboardContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        >
+        <SafeAreaView style={styles.safeAreaTop} edges={['top']}>
+          <View style={{ height: insets.top, backgroundColor: '#000000' }} />
+        </SafeAreaView>
         {/* Header */}
-        <View style={styles.header}>
+        <LinearGradient
+          colors={['#000000', '#1a1a1a']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 8 : 16 }]}
+        >
           <View style={styles.headerLeft}>
-            <View style={styles.headerIconContainer}>
-              <Icon name="chatbubble-ellipses" size={24} color="#FFFFFF" />
-            </View>
+            <LinearGradient
+              colors={['#FFFFFF', '#F0F0F0']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.headerIconContainer}
+            >
+              <Icon name="body" size={24} color="#000000" />
+            </LinearGradient>
             <View>
-              <Text style={styles.headerTitle}>AI Height Coach</Text>
-              <Text style={styles.headerSubtitle}>
-                Day {userProgress?.current_day || 1} • {AICoachService.getPhaseForDay(userProgress?.current_day || 1)} Phase
-              </Text>
+              <Text style={styles.headerTitle}>Jacob Height Coach</Text>
+              <View style={styles.statusContainer}>
+                <View style={styles.statusDot} />
+                <Text style={styles.headerSubtitle}>
+                  Day {userProgress?.current_day || 1} • {AICoachService.getPhaseForDay(userProgress?.current_day || 1)} Phase
+                </Text>
+              </View>
             </View>
           </View>
           <TouchableOpacity
@@ -231,30 +259,43 @@ const AICoachModal = ({ visible, onClose }) => {
               onClose();
             }}
           >
-            <Icon name="close" size={24} color="#666666" />
+            <Icon name="close" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-        </View>
+        </LinearGradient>
 
-        {/* Quick Questions */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.quickQuestionsContainer}
-          contentContainerStyle={styles.quickQuestionsContent}
-        >
-          {quickQuestions.map((question, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.quickQuestionChip}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                handleQuickQuestion(question);
-              }}
+        {/* Quick Questions - Only show initially */}
+        {showQuickQuestions && (
+          <View style={styles.quickQuestionsContainer}>
+            <Text style={styles.quickQuestionsTitle}>Quick Questions</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.quickQuestionsContent}
+              style={styles.quickQuestionsScrollView}
             >
-              <Text style={styles.quickQuestionText}>{question}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+              {quickQuestions.map((question, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.quickQuestionChip}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    handleQuickQuestion(question);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={['#FFFFFF', '#F8F9FA']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.quickQuestionGradient}
+                  >
+                    <Text style={styles.quickQuestionText}>{question}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {/* Messages */}
         <ScrollView
@@ -269,9 +310,14 @@ const AICoachModal = ({ visible, onClose }) => {
               msg.isUser ? styles.userMessage : styles.aiMessage
             ]}>
               {!msg.isUser && (
-                <View style={styles.aiAvatar}>
-                  <Icon name="sparkles" size={16} color="#000000" />
-                </View>
+                <LinearGradient
+                  colors={['#FFFFFF', '#F8F9FA']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.aiAvatar}
+                >
+                  <Icon name="body" size={16} color="#000000" />
+                </LinearGradient>
               )}
               <View style={[
                 styles.messageBubble,
@@ -280,7 +326,7 @@ const AICoachModal = ({ visible, onClose }) => {
                 {msg.isTyping ? (
                   <View style={styles.typingContainer}>
                     <ActivityIndicator size="small" color="#000000" />
-                    <Text style={styles.typingText}>AI Coach is typing...</Text>
+                    <Text style={styles.typingText}>Coach is typing...</Text>
                   </View>
                 ) : (
                   <Text style={[
@@ -302,36 +348,58 @@ const AICoachModal = ({ visible, onClose }) => {
         </ScrollView>
 
         {/* Input */}
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.messageInput}
-            placeholder="Ask your AI coach anything..."
-            placeholderTextColor="#AAAAAA"
-            value={message}
-            onChangeText={setMessage}
-            multiline
-            maxLength={500}
-            editable={!isLoading}
-          />
-          <TouchableOpacity
-            style={[
-              styles.sendButton,
-              (message.trim().length === 0 || isLoading) && styles.sendButtonDisabled
-            ]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              handleSendMessage();
-            }}
-            disabled={message.trim().length === 0 || isLoading}
+        <View style={styles.inputSafeArea}>
+          <LinearGradient
+            colors={['#FFFFFF', '#F8F9FA']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={styles.inputContainer}
           >
-            {isLoading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Icon name="send" size={20} color="#FFFFFF" />
-            )}
-          </TouchableOpacity>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={[styles.messageInput, Platform.OS === 'ios' && styles.messageInputIOS]}
+                placeholder="Ask your coach anything..."
+                placeholderTextColor="#AAAAAA"
+                value={message}
+                onChangeText={setMessage}
+                multiline={true}
+                maxLength={500}
+                editable={!isLoading}
+                textContentType="none"
+                autoCorrect={true}
+                autoCapitalize="sentences"
+                blurOnSubmit={false}
+              />
+              <TouchableOpacity
+                style={[
+                  styles.sendButton,
+                  (message.trim().length === 0 || isLoading) && styles.sendButtonDisabled
+                ]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  handleSendMessage();
+                }}
+                disabled={message.trim().length === 0 || isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <LinearGradient
+                    colors={message.trim().length > 0 ? ['#000000', '#333333'] : ['#CCCCCC', '#AAAAAA']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.sendButtonGradient}
+                  >
+                    <Icon name="send" size={20} color="#FFFFFF" />
+                  </LinearGradient>
+                )}
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
         </View>
-      </KeyboardAvoidingView>
+        <SafeAreaView style={styles.safeAreaBottom} edges={['bottom']} />
+        </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 };
@@ -341,6 +409,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
+  safeAreaTop: {
+    backgroundColor: '#000000',
+  },
+  safeAreaBottom: {
+    backgroundColor: '#FFFFFF',
+  },
+  keyboardContainer: {
+    flex: 1,
+  },
 
   // Header
   header: {
@@ -348,64 +425,110 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
-    paddingTop: 50, // Account for status bar
+    paddingBottom: 16,
+    paddingTop: 12,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   headerIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#000000',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
-    color: '#000000',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#22C55E',
+    marginRight: 6,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#666666',
+    color: '#CCCCCC',
+    fontWeight: '500',
   },
   closeButton: {
-    padding: 4,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
 
   // Quick Questions
   quickQuestionsContainer: {
+    backgroundColor: '#F8F9FA',
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5E5',
+    minHeight: 60,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  quickQuestionsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 8,
+    paddingHorizontal: 20,
   },
   quickQuestionsContent: {
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingRight: 40,
+  },
+  quickQuestionsScrollView: {
+    flexGrow: 0,
   },
   quickQuestionChip: {
-    backgroundColor: 'transparent',
+    marginRight: 12,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  quickQuestionGradient: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 16,
-    marginRight: 8,
-    borderWidth: 0,
-    borderColor: 'transparent',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
   },
   quickQuestionText: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#000000',
-    fontWeight: '700',
+    fontWeight: '600',
+    textAlign: 'center',
+    letterSpacing: 0.1,
   },
 
   // Messages
   messagesContainer: {
     flex: 1,
+    marginBottom: Platform.OS === 'ios' ? 0 : 0,
   },
   messagesContent: {
     paddingHorizontal: 20,
@@ -423,29 +546,38 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   aiAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F8F9FA',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
+    marginRight: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   messageBubble: {
     maxWidth: '80%',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 22,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   userBubble: {
     backgroundColor: '#000000',
-    borderBottomRightRadius: 4,
+    borderBottomRightRadius: 6,
   },
   aiBubble: {
-    backgroundColor: '#F8F9FA',
-    borderBottomLeftRadius: 4,
+    backgroundColor: '#FFFFFF',
+    borderBottomLeftRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
   },
   messageText: {
     fontSize: 16,
@@ -480,38 +612,69 @@ const styles = StyleSheet.create({
   },
 
   // Input
+  inputSafeArea: {
+    backgroundColor: '#FFFFFF',
+  },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: Platform.OS === 'ios' ? 24 : 16,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 16,
     borderTopWidth: 1,
     borderTopColor: '#E5E5E5',
     backgroundColor: '#FFFFFF',
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
   },
   messageInput: {
     flex: 1,
     borderWidth: 1,
     borderColor: '#E5E5E5',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    paddingTop: Platform.OS === 'ios' ? 14 : 12,
+    paddingBottom: Platform.OS === 'ios' ? 14 : 12,
     fontSize: 16,
     color: '#000000',
+    minHeight: Platform.OS === 'ios' ? 48 : 48,
     maxHeight: 100,
     marginRight: 12,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+    textAlignVertical: Platform.OS === 'android' ? 'center' : 'top',
+  },
+  messageInputIOS: {
+    paddingTop: 14,
+    paddingBottom: 14,
   },
   sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#000000',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  sendButtonGradient: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },
   sendButtonDisabled: {
-    backgroundColor: '#CCCCCC',
+    opacity: 0.5,
   },
 });
 
 export default AICoachModal;
+

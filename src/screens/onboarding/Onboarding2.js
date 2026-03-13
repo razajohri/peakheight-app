@@ -1,174 +1,159 @@
-// Onboarding2.js (Page 2 - Choose your gender)
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+// Onboarding2.js (Page 2 - Full name)
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, Animated, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
+import FloatingStars from '../../components/UI/FloatingStars';
+import ProgressHeader from '../../components/onboarding/ProgressHeader';
+import OnboardingButton from '../../components/onboarding/OnboardingButton';
+import { 
+  ONBOARDING_TYPOGRAPHY, 
+  ONBOARDING_SPACING,
+  ONBOARDING_COLORS,
+  ONBOARDING_BORDER_RADIUS,
+} from '../../utils/onboardingConstants';
 
 const Onboarding2 = ({ navigation, data, updateData }) => {
-  const [selectedGender, setSelectedGender] = useState(data.gender || null);
+  const [fullName, setFullName] = useState(data.fullName || data.displayName || '');
+  const fadeIn = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Fade in animation on mount
+    Animated.timing(fadeIn, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const handleContinue = () => {
+    const trimmedFull = fullName.trim();
+    if (!trimmedFull) {
+      return;
+    }
+
+    // Derive first/last name from full name for profile mapping
+    const parts = trimmedFull.split(/\s+/);
+    const derivedFirst = parts[0] || '';
+    const derivedLast = parts.length > 1 ? parts.slice(1).join(' ') : '';
+    const displayName = trimmedFull;
+
+    updateData({
+      fullName: trimmedFull,
+      firstName: derivedFirst,
+      lastName: derivedLast || undefined,
+      displayName,
+    });
+
+    navigation.navigate('Onboarding3');
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: '13%' }]} />
+    <Animated.View style={[styles.container, { opacity: fadeIn }]}>
+      <SafeAreaView style={styles.safeArea}>
+        <FloatingStars />
+        <ProgressHeader 
+          currentStep={2} 
+          onBack={() => navigation.goBack()} 
+        />
+
+        <View style={styles.contentContainer}>
+          <View style={styles.titleContainer}>
+            <Text style={styles.title}>First, what&apos;s your name?</Text>
+          </View>
+
+          <View style={styles.nameContainer}>
+            <View style={styles.nameInputWrapper}>
+              <Text style={styles.inputLabel}>Full name</Text>
+              <TextInput
+                style={styles.nameInput}
+                placeholder=""
+                placeholderTextColor={ONBOARDING_COLORS.TEXT_SECONDARY}
+                value={fullName}
+                onChangeText={setFullName}
+                autoCapitalize="words"
+                autoCorrect={false}
+              />
+            </View>
+          </View>
         </View>
-        <Text style={styles.progressText}>2/15</Text>
-      </View>
 
-      <View style={styles.contentContainer}>
-        <Text style={styles.title}>Choose your gender</Text>
-
-        <View style={styles.optionsContainer}>
-          <TouchableOpacity
-            style={[
-              styles.optionCard,
-              selectedGender === 'male' && styles.selectedCard
-            ]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setSelectedGender('male');
-              updateData({ gender: 'male' });
-            }}
-          >
-            <Text style={styles.optionText}>Male</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.optionCard,
-              selectedGender === 'female' && styles.selectedCard
-            ]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setSelectedGender('female');
-              updateData({ gender: 'female' });
-            }}
-          >
-            <Text style={styles.optionText}>Female</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.optionCard,
-              selectedGender === 'other' && styles.selectedCard
-            ]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setSelectedGender('other');
-              updateData({ gender: 'other' });
-            }}
-          >
-            <Text style={styles.optionText}>Other</Text>
-          </TouchableOpacity>
+        <View style={styles.buttonContainer}>
+          <OnboardingButton
+            title="Continue"
+            onPress={handleContinue}
+            disabled={!fullName.trim()}
+          />
         </View>
-      </View>
-
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[
-            styles.button,
-            !selectedGender && styles.buttonDisabled
-          ]}
-          disabled={!selectedGender}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            navigation.navigate('Onboarding3');
-          }}
-        >
-          <Text style={styles.buttonText}>Continue</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: ONBOARDING_COLORS.BACKGROUND,
   },
-  progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 4,
-    marginBottom: 24,
-  },
-  progressBar: {
+  safeArea: {
     flex: 1,
-    height: 4,
-    backgroundColor: '#1f1f1f',
-    borderRadius: 2,
-    marginRight: 12,
-  },
-  progressFill: {
-    height: 4,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 2,
-  },
-  progressText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: '#9CA3AF',
   },
   contentContainer: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: ONBOARDING_SPACING.PAGE_HORIZONTAL,
+    paddingTop: ONBOARDING_SPACING.PAGE_VERTICAL + ONBOARDING_SPACING.SM,
+  },
+  titleContainer: {
+    marginBottom: ONBOARDING_SPACING.SECTION_GAP + ONBOARDING_SPACING.MD,
   },
   title: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 28,
-    color: '#FFFFFF',
-    marginBottom: 32,
-    letterSpacing: -0.5,
+    ...ONBOARDING_TYPOGRAPHY.PAGE_TITLE,
+    fontSize: 28, // Slightly smaller for this page
+    marginBottom: ONBOARDING_SPACING.SM,
+    textAlign: 'center',
+  },
+  subtitle: {
+    ...ONBOARDING_TYPOGRAPHY.SUBTITLE,
+    textAlign: 'center',
   },
   optionsContainer: {
-    marginTop: 16,
+    flex: 1,
+    justifyContent: 'center',
+    paddingBottom: ONBOARDING_SPACING.LG,
   },
-  optionCard: {
+  nameContainer: {
+    flexDirection: 'row',
+    gap: ONBOARDING_SPACING.MD,
+    marginTop: ONBOARDING_SPACING.MD,
+    marginBottom: ONBOARDING_SPACING.LG,
+  },
+  nameInputWrapper: {
+    flex: 1,
+  },
+  inputLabel: {
+    ...ONBOARDING_TYPOGRAPHY.SUBTITLE,
+    fontSize: 17,
+    marginBottom: ONBOARDING_SPACING.SM,
+  },
+  nameInput: {
+    borderRadius: ONBOARDING_BORDER_RADIUS.MD,
     borderWidth: 1,
-    borderColor: '#1f1f1f',
-    backgroundColor: '#0a0a0a',
-    borderRadius: 12,
-    padding: 18,
-    marginBottom: 14,
-  },
-  selectedCard: {
-    borderColor: '#FFFFFF',
-    backgroundColor: '#111111',
-  },
-  optionText: {
-    fontFamily: 'Inter-Medium',
+    borderColor: ONBOARDING_COLORS.BORDER,
+    paddingHorizontal: ONBOARDING_SPACING.MD,
+    paddingVertical: ONBOARDING_SPACING.MD,
+    minHeight: 54,
+    color: ONBOARDING_COLORS.TEXT_PRIMARY,
+    backgroundColor: ONBOARDING_COLORS.SURFACE,
     fontSize: 18,
-    color: '#FFFFFF',
+  },
+  titleSecondary: {
+    ...ONBOARDING_TYPOGRAPHY.PAGE_TITLE,
+    fontSize: 22,
+    marginBottom: ONBOARDING_SPACING.SM,
     textAlign: 'center',
   },
   buttonContainer: {
-    padding: 24,
-  },
-  button: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#1f1f1f',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  buttonDisabled: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#1f1f1f',
-    opacity: 0.7,
-  },
-  buttonText: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 16,
-    color: '#000000',
+    padding: ONBOARDING_SPACING.LG,
+    paddingBottom: 40,
   },
 });
 

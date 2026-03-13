@@ -2,110 +2,146 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import FloatingStars from '../../components/UI/FloatingStars';
+import ProgressHeader from '../../components/onboarding/ProgressHeader';
+import OnboardingButton from '../../components/onboarding/OnboardingButton';
+import HapticFeedback from '../../utils/hapticFeedback';
+import { FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
+import { 
+  ONBOARDING_TYPOGRAPHY, 
+  ONBOARDING_SPACING,
+  ONBOARDING_COLORS,
+  ONBOARDING_BORDER_RADIUS 
+} from '../../utils/onboardingConstants';
 
 const Onboarding12 = ({ navigation, data, updateData }) => {
   const [smokingStatus, setSmokingStatus] = useState(data.smokingStatus || null);
   const [drinkingStatus, setDrinkingStatus] = useState(data.drinkingStatus || null);
+  
 
   const isReadyToContinue = smokingStatus !== null && drinkingStatus !== null;
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: '80%' }]} />
-        </View>
-        <Text style={styles.progressText}>12/15</Text>
-      </View>
+      <FloatingStars />
+      <ProgressHeader 
+        currentStep={14} 
+        onBack={() => navigation.goBack()} 
+      />
 
       <View style={styles.contentContainer}>
-        <Text style={styles.title}>Do you smoke or drink alcohol?</Text>
-
-        <View style={styles.questionSection}>
-          <Text style={styles.questionText}>Do you smoke?</Text>
-          <View style={styles.optionsRow}>
-            <TouchableOpacity
-              style={[
-                styles.optionButton,
-                smokingStatus === true && styles.optionButtonSelected
-              ]}
-              onPress={() => {
-                setSmokingStatus(true);
-                updateData({ smokingStatus: true });
-              }}
-            >
-              <Text style={styles.optionButtonText}>Yes</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.optionButton,
-                smokingStatus === false && styles.optionButtonSelected
-              ]}
-              onPress={() => {
-                setSmokingStatus(false);
-                updateData({ smokingStatus: false });
-              }}
-            >
-              <Text style={styles.optionButtonText}>No</Text>
-            </TouchableOpacity>
-          </View>
+        <View style={styles.titleContainer}>
+          <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit={true}>Do you smoke or drink alcohol?</Text>
+    
         </View>
 
-        <View style={styles.questionSection}>
-          <Text style={styles.questionText}>Do you drink alcohol?</Text>
-          <View style={styles.optionsRow}>
-            <TouchableOpacity
-              style={[
-                styles.optionButton,
-                drinkingStatus === true && styles.optionButtonSelected
-              ]}
-              onPress={() => {
-                setDrinkingStatus(true);
-                updateData({ drinkingStatus: true });
-              }}
-            >
-              <Text style={styles.optionButtonText}>Yes</Text>
-            </TouchableOpacity>
+        <View style={styles.questionsContainer}>
+          <View style={styles.questionSection}>
+            <View style={styles.questionHeader}>
+              <FontAwesome5 name="smoking" size={20} color="#FFFFFF" style={styles.questionIcon} />
+              <Text style={styles.questionText}>Do you smoke?</Text>
+            </View>
+            <View style={styles.optionsRow}>
+              <TouchableOpacity
+                style={[
+                  styles.optionButton,
+                  smokingStatus === true && styles.optionButtonSelected
+                ]}
+                onPress={() => {
+                  HapticFeedback.selection();
+                  setSmokingStatus(true);
+                  updateData({ smokingStatus: true });
+                }}
+              >
+                <Text style={[
+                  styles.optionButtonText,
+                  smokingStatus === true && styles.optionButtonTextSelected
+                ]}>Yes</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[
-                styles.optionButton,
-                drinkingStatus === false && styles.optionButtonSelected
-              ]}
-              onPress={() => {
-                setDrinkingStatus(false);
-                updateData({ drinkingStatus: false });
-              }}
-            >
-              <Text style={styles.optionButtonText}>No</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.optionButton,
+                  styles.optionButtonSecond,
+                  smokingStatus === false && styles.optionButtonSelected
+                ]}
+                onPress={() => {
+                  HapticFeedback.selection();
+                  setSmokingStatus(false);
+                  updateData({ smokingStatus: false });
+                }}
+              >
+                <Text style={[
+                  styles.optionButtonText,
+                  smokingStatus === false && styles.optionButtonTextSelected
+                ]}>No</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
 
-        {(smokingStatus === true || drinkingStatus === true) && (
+          <View style={styles.questionSection}>
+            <View style={styles.questionHeader}>
+              <FontAwesome5 name="wine-bottle" size={20} color="#FFFFFF" style={styles.questionIcon} />
+              <Text style={styles.questionText}>Do you drink alcohol?</Text>
+            </View>
+            <View style={styles.optionsRow}>
+              <TouchableOpacity
+                style={[
+                  styles.optionButton,
+                  drinkingStatus === true && styles.optionButtonSelected
+                ]}
+                onPress={() => {
+                  HapticFeedback.selection();
+                  setDrinkingStatus(true);
+                  updateData({ drinkingStatus: true });
+                }}
+              >
+                <Text style={[
+                  styles.optionButtonText,
+                  drinkingStatus === true && styles.optionButtonTextSelected
+                ]}>Yes</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.optionButton,
+                  styles.optionButtonSecond,
+                  drinkingStatus === false && styles.optionButtonSelected
+                ]}
+                onPress={() => {
+                  HapticFeedback.selection();
+                  setDrinkingStatus(false);
+                  updateData({ drinkingStatus: false });
+                }}
+              >
+                <Text style={[
+                  styles.optionButtonText,
+                  drinkingStatus === false && styles.optionButtonTextSelected
+                ]}>No</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           <View style={styles.infoContainer}>
+            <View style={styles.infoIconContainer}>
+              <Ionicons name="information-circle-outline" size={24} color="#9CA3AF" />
+            </View>
             <Text style={styles.infoText}>
-              Research shows that smoking and alcohol consumption can negatively impact growth hormone production and bone development.
+              {smokingStatus === true || drinkingStatus === true
+                ? "Research shows that smoking and alcohol consumption can negatively impact growth hormone production and bone development. We'll help you create a plan that addresses these factors."
+                : "Understanding your lifestyle habits helps us create a personalized growth plan tailored to your needs."}
             </Text>
           </View>
-        )}
+        </View>
       </View>
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[
-            styles.button,
-            !isReadyToContinue && styles.buttonDisabled
-          ]}
-          disabled={!isReadyToContinue}
+        <OnboardingButton
+          title="Continue"
           onPress={() => navigation.navigate('Onboarding13')}
-        >
-          <Text style={[
-            styles.buttonText,
-            !isReadyToContinue && styles.buttonTextDisabled
-          ]}>Continue</Text>
-        </TouchableOpacity>
+          disabled={!isReadyToContinue}
+        />
       </View>
     </SafeAreaView>
   );
@@ -114,115 +150,98 @@ const Onboarding12 = ({ navigation, data, updateData }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 4,
-    marginBottom: 24,
-  },
-  progressBar: {
-    flex: 1,
-    height: 4,
-    backgroundColor: '#1f1f1f',
-    borderRadius: 2,
-    marginRight: 12,
-  },
-  progressFill: {
-    height: 4,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 2,
-  },
-  progressText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: '#9CA3AF',
+    backgroundColor: ONBOARDING_COLORS.BACKGROUND,
   },
   contentContainer: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: ONBOARDING_SPACING.PAGE_HORIZONTAL,
+    paddingTop: ONBOARDING_SPACING.PAGE_VERTICAL,
+  },
+  titleContainer: {
+    marginBottom: 40,
   },
   title: {
-    fontFamily: 'Inter-Bold',
+    ...ONBOARDING_TYPOGRAPHY.PAGE_TITLE,
     fontSize: 28,
-    color: '#FFFFFF',
-    marginBottom: 24,
-    letterSpacing: -0.5,
+    marginBottom: ONBOARDING_SPACING.SM,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: '#9CA3AF',
+    textAlign: 'center',
+  },
+  questionsContainer: {
+    flex: 0,
   },
   questionSection: {
     marginBottom: 32,
+  },
+  questionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  questionIcon: {
+    marginRight: 10,
   },
   questionText: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 18,
     color: '#FFFFFF',
-    marginBottom: 16,
   },
   optionsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
   },
   optionButton: {
     flex: 1,
-    paddingVertical: 16,
+    paddingVertical: ONBOARDING_SPACING.MD,
+    paddingHorizontal: ONBOARDING_SPACING.LG,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#1f1f1f',
-    borderRadius: 12,
-    marginHorizontal: 8,
+    borderColor: ONBOARDING_COLORS.BORDER,
+    backgroundColor: ONBOARDING_COLORS.SURFACE,
+    borderRadius: ONBOARDING_BORDER_RADIUS.MD,
+  },
+  optionButtonSecond: {
+    marginLeft: ONBOARDING_SPACING.SM + 4,
   },
   optionButtonSelected: {
-    borderColor: '#FFFFFF',
-    backgroundColor: '#111111',
+    borderColor: ONBOARDING_COLORS.BORDER_SELECTED,
+    backgroundColor: ONBOARDING_COLORS.SURFACE_ELEVATED,
   },
   optionButtonText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 16,
-    color: '#FFFFFF',
+    ...ONBOARDING_TYPOGRAPHY.OPTION_TEXT,
+  },
+  optionButtonTextSelected: {
+    color: ONBOARDING_COLORS.TEXT_PRIMARY,
   },
   infoContainer: {
-    padding: 16,
-    backgroundColor: '#0a0a0a',
-    borderRadius: 12,
+    flexDirection: 'row',
+    padding: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#1f1f1f',
-    marginTop: 16,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    marginTop: 24,
+    alignItems: 'flex-start',
+  },
+  infoIconContainer: {
+    marginRight: 12,
+    marginTop: 2,
   },
   infoText: {
     fontFamily: 'Inter-Regular',
-    fontSize: 16,
-    color: '#FFFFFF',
-    lineHeight: 24,
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.8)',
+    lineHeight: 22,
+    flex: 1,
   },
   buttonContainer: {
-    padding: 24,
-  },
-  button: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#1f1f1f',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  buttonDisabled: {
-    backgroundColor: '#1f1f1f',
-    borderColor: '#0a0a0a',
-  },
-  buttonText: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 16,
-    color: '#000000',
-  },
-  buttonTextDisabled: {
-    color: '#9CA3AF',
+    padding: ONBOARDING_SPACING.LG,
+    paddingBottom: 40,
   },
 });
 

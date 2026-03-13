@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import Icon from 'react-native-vector-icons/Ionicons';
+import Icon from '../UI/Icon';
 
 export default function ProfileProgress({ styles, userProfile, formatHeight, calculateHeightProgress }) {
   return (

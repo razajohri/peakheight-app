@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -7,121 +7,94 @@ import Animated, {
   withSequence,
   withDelay,
   runOnJS,
-  Easing,
 } from 'react-native-reanimated';
 
 const { width, height } = Dimensions.get('window');
 
-const ConfettiPiece = ({ delay, color, size, startX, startY }) => {
+const ConfettiPiece = ({ delay, color, size, startX, duration = 3000 }) => {
   const translateY = useSharedValue(-50);
-  const translateX = useSharedValue(startX);
+  const translateX = useSharedValue(0);
   const rotate = useSharedValue(0);
-  const opacity = useSharedValue(1);
+  const opacity = useSharedValue(0);
 
   useEffect(() => {
-    const animate = () => {
-      translateY.value = withDelay(
-        delay,
-        withTiming(height + 100, {
-          duration: 3000,
-          easing: Easing.out(Easing.quad),
-        })
+    const startAnimation = () => {
+      opacity.value = withTiming(1, { duration: 200 });
+      translateY.value = withTiming(height + 100, { duration });
+      translateX.value = withTiming(
+        startX + (Math.random() - 0.5) * 200,
+        { duration }
       );
-
-      translateX.value = withDelay(
-        delay,
-        withTiming(startX + (Math.random() - 0.5) * 200, {
-          duration: 3000,
-          easing: Easing.out(Easing.quad),
-        })
-      );
-
-      rotate.value = withDelay(
-        delay,
-        withTiming(360 * 3, {
-          duration: 3000,
-          easing: Easing.linear,
-        })
-      );
-
-      opacity.value = withDelay(
-        delay + 2500,
-        withTiming(0, {
-          duration: 500,
-          easing: Easing.out(Easing.quad),
-        })
-      );
+      rotate.value = withTiming(360 * 3, { duration });
     };
 
-    animate();
-  }, [delay, startX, startY]);
+    const timer = setTimeout(startAnimation, delay);
+    return () => clearTimeout(timer);
+  }, [delay, duration, startX]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateY: translateY.value },
       { translateX: translateX.value },
+      { translateY: translateY.value },
       { rotate: `${rotate.value}deg` },
     ],
     opacity: opacity.value,
   }));
 
   return (
-    <Animated.View
-      style={[
-        styles.confettiPiece,
-        {
-          backgroundColor: color,
-          width: size,
-          height: size,
-          left: startX,
-          top: startY,
-        },
-        animatedStyle,
-      ]}
-    />
+    <Animated.View style={[styles.confettiPiece, animatedStyle]}>
+      <View
+        style={[
+          styles.confettiShape,
+          {
+            backgroundColor: color,
+            width: size,
+            height: size,
+            borderRadius: size / 4,
+          },
+        ]}
+      />
+    </Animated.View>
   );
 };
 
-const ConfettiAnimation = ({ visible, onComplete, colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD'] }) => {
-  const opacity = useSharedValue(0);
+export default function ConfettiAnimation({ visible, onComplete }) {
+  const containerOpacity = useSharedValue(0);
 
   useEffect(() => {
     if (visible) {
-      opacity.value = withTiming(1, { duration: 200 });
-
-      // Hide after animation completes
-      setTimeout(() => {
-        opacity.value = withTiming(0, { duration: 500 }, () => {
+      containerOpacity.value = withTiming(1, { duration: 300 });
+      
+      // Hide confetti after animation completes
+      const timer = setTimeout(() => {
+        containerOpacity.value = withTiming(0, { duration: 500 }, () => {
           runOnJS(onComplete)();
         });
-      }, 3500);
+      }, 4000);
+
+      return () => clearTimeout(timer);
     }
-  }, [visible]);
+  }, [visible, onComplete]);
 
   const containerStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
+    opacity: containerOpacity.value,
   }));
 
   if (!visible) return null;
 
+  const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
   const confettiPieces = [];
-  const pieceCount = 50;
 
-  for (let i = 0; i < pieceCount; i++) {
-    const color = colors[Math.floor(Math.random() * colors.length)];
-    const size = Math.random() * 8 + 4; // 4-12px
-    const startX = Math.random() * width;
-    const startY = -50;
-    const delay = Math.random() * 1000; // Stagger the animation
-
+  // Generate confetti pieces
+  for (let i = 0; i < 50; i++) {
     confettiPieces.push(
       <ConfettiPiece
         key={i}
-        delay={delay}
-        color={color}
-        size={size}
-        startX={startX}
-        startY={startY}
+        delay={i * 50}
+        color={colors[i % colors.length]}
+        size={Math.random() * 8 + 4}
+        startX={Math.random() * width}
+        duration={Math.random() * 2000 + 2000}
       />
     );
   }
@@ -131,7 +104,7 @@ const ConfettiAnimation = ({ visible, onComplete, colors = ['#FF6B6B', '#4ECDC4'
       {confettiPieces}
     </Animated.View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -144,8 +117,12 @@ const styles = StyleSheet.create({
   },
   confettiPiece: {
     position: 'absolute',
-    borderRadius: 2,
+  },
+  confettiShape: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
 });
-
-export default ConfettiAnimation;

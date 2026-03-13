@@ -1,4 +1,4 @@
-import { API_KEYS, API_ENDPOINTS } from '../config/apiKeys';
+import { API_KEYS, API_ENDPOINTS, OPENAI_MODELS } from '../config/apiKeys';
 import { AuthService } from './auth';
 import { DailyPlanService } from './dailyPlanService';
 
@@ -13,7 +13,7 @@ export class AICoachService {
     app_features: {
       overview: "PeakHeight is a comprehensive 120-day height growth app with personalized exercise plans, nutrition tracking, sleep optimization, posture improvement, and community support.",
       exercises: {
-        categories: ["Foundation", "Building", "Advancing", "Mastery"],
+        categories: ["Growth Hormone", "Building", "Advancing", "Mastery"],
         types: ["Stretching", "Hanging", "Posture", "Spinal Decompression", "Core Strengthening"],
         daily_plan: "Users get 5 personalized exercises daily based on their current day (1-120) and phase",
         timing: "Each exercise has specific duration and difficulty levels (Beginner, Inter, Advanced)",
@@ -32,7 +32,7 @@ export class AICoachService {
       },
       progress: {
         tracking: "120-day plan with daily tasks, weekly progress, and streak tracking",
-        phases: "Foundation (1-30), Building (31-60), Advancing (61-90), Mastery (91-120)",
+        phases: "Growth Hormone (1-30), Building (31-60), Advancing (61-90), Mastery (91-120)",
         metrics: "Height measurements, habit consistency, exercise completion, nutrition scores"
       },
       community: {
@@ -166,14 +166,14 @@ export class AICoachService {
         { role: 'user', content: message }
       ];
 
-      const response = await fetch(`${API_ENDPOINTS.OPENAI}/chat/completions`, {
+      const response = await fetch(`${API_ENDPOINTS.OPENAI}/v1/chat/completions`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${API_KEYS.OPENAI_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4',
+          model: OPENAI_MODELS.DEFAULT,
           messages: messages,
           max_tokens: 500,
           temperature: 0.7,
@@ -209,10 +209,10 @@ export class AICoachService {
 
   // Build comprehensive system prompt
   static buildSystemPrompt() {
-    return `You are PeakHeight AI Coach, an expert height growth coach and app guide. You have extensive knowledge about:
+    return `You are Jacob, their personal coach for their 6 months height growth plan, an expert height growth coach and app guide. Your name is Jacob. You have extensive knowledge about:
 
 APP FEATURES:
-- 120-day personalized growth plan with 4 phases (Foundation, Building, Advancing, Mastery)
+- 6 months personalized growth plan with 4 phases (Growth Hormone, Building, Advancing, Mastery)
 - Daily exercise plans with 5 exercises based on user's current day and phase
 - Nutrition tracking with food scanner and growth scores
 - Sleep optimization and tracking
@@ -246,6 +246,7 @@ SLEEP OPTIMIZATION:
 - Avoid screens 1 hour before bed
 
 COMMUNICATION STYLE:
+- Your name is Jacob - introduce yourself as Jacob and refer to yourself by name when appropriate
 - Encouraging and supportive
 - Science-based but accessible
 - Specific and actionable advice
@@ -254,7 +255,7 @@ COMMUNICATION STYLE:
 - Keep responses concise but comprehensive
 - Always relate advice back to the app features when relevant
 
-When users ask about the app, explain specific features. When they ask about height growth, provide science-based advice. Always be encouraging and help them stay motivated on their 120-day journey.`;
+When users ask about the app, explain specific features. When they ask about height growth, provide science-based advice. Always be encouraging and help them stay motivated on their 6 months height growth journey. Speak as their dedicated personal coach Jacob who is invested in their success.`;
   }
 
   // Get user context for personalized responses
@@ -281,7 +282,7 @@ When users ask about the app, explain specific features. When they ask about hei
 
   // Get phase for current day
   static getPhaseForDay(day) {
-    if (day <= 30) return 'Foundation';
+    if (day <= 30) return 'Growth Hormone';
     if (day <= 60) return 'Building';
     if (day <= 90) return 'Advancing';
     return 'Mastery';
@@ -302,7 +303,7 @@ When users ask about the app, explain specific features. When they ask about hei
 
     // App-related questions
     if (lowerMessage.includes('app') || lowerMessage.includes('feature')) {
-      return "PeakHeight offers a 120-day personalized growth plan with daily exercises, nutrition tracking, sleep optimization, and community support. You're currently on day " + (userContext.currentDay || 1) + " of your " + (userContext.phase || 'Foundation') + " phase! 🎯";
+      return "PeakHeight offers a 120-day personalized growth plan with daily exercises, nutrition tracking, sleep optimization, and community support. You're currently on day " + (userContext.currentDay || 1) + " of your " + (userContext.phase || 'Growth Hormone') + " phase! 🎯";
     }
 
     if (lowerMessage.includes('exercise') || lowerMessage.includes('workout')) {
@@ -347,10 +348,10 @@ When users ask about the app, explain specific features. When they ask about hei
     const { currentDay, phase, streak, age } = userContext;
 
     const tips = {
-      Foundation: [
+      'Growth Hormone': [
         "Focus on building consistent habits! Start with 10 minutes of daily stretching.",
-        "Your foundation phase is about establishing routines. Don't worry about perfection!",
-        "Sleep is your secret weapon during the foundation phase. Aim for 8+ hours!",
+        "Your growth hormone phase is about establishing routines. Don't worry about perfection!",
+        "Sleep is your secret weapon during the growth hormone phase. Aim for 8+ hours!",
         "Track your nutrition daily. Small improvements compound over time!"
       ],
       Building: [
@@ -373,7 +374,7 @@ When users ask about the app, explain specific features. When they ask about hei
       ]
     };
 
-    const phaseTips = tips[phase] || tips.Foundation;
+    const phaseTips = tips[phase] || tips['Growth Hormone'];
     return phaseTips[Math.floor(Math.random() * phaseTips.length)];
   }
 

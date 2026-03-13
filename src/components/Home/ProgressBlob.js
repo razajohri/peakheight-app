@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, G, Defs, RadialGradient, Stop } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -17,7 +18,7 @@ import Animated, {
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-const ProgressBlob = ({ onNavigateToProgress, userProgress }) => {
+const ProgressBlob = ({ onNavigateToProgress, userProgress, minimal = false }) => {
   // Animation values
   const animation = useSharedValue(0);
   const particleAnimation1 = useSharedValue(0);
@@ -167,15 +168,38 @@ const ProgressBlob = ({ onNavigateToProgress, userProgress }) => {
   }, [userProgress?.current_day]);
 
   const getCurrentPhase = () => {
-    if (!userProgress) return 'Foundation';
+    if (!userProgress) return 'Growth Hormone';
     const currentDay = userProgress.current_day || 1;
-    if (currentDay <= 30) return 'Foundation';
+    if (currentDay <= 30) return 'Growth Hormone';
     if (currentDay <= 60) return 'Building';
     if (currentDay <= 90) return 'Optimization';
     return 'Maintenance';
   };
 
 
+  // --- Minimal variant: just the animated blob, no card/header/touch ---
+  if (minimal) {
+    return (
+      <View style={styles.blobContainerMinimal}>
+        <Svg height="140" width="100%" viewBox="0 0 160 160">
+          <Defs>
+            <RadialGradient id="grad" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+              <Stop offset="0%" stopColor="#000000" stopOpacity="1" />
+              <Stop offset="100%" stopColor="#000000" stopOpacity="0.2" />
+            </RadialGradient>
+          </Defs>
+          {/* Main animated blob */}
+          <AnimatedPath animatedProps={animatedBlobProps} fill="url(#grad)" />
+          {/* Animated particles */}
+          <AnimatedCircle animatedProps={animatedParticle1Props} r="3" fill="#FFFFFF" opacity={0.8} />
+          <AnimatedCircle animatedProps={animatedParticle2Props} r="2" fill="#FFFFFF" opacity={0.6} />
+          <AnimatedCircle animatedProps={animatedParticle3Props} r="2.5" fill="#FFFFFF" opacity={0.7} />
+        </Svg>
+      </View>
+    );
+  }
+
+  // --- Full home-page variant ---
   return (
     <TouchableOpacity
       style={styles.progressSection}
@@ -196,7 +220,12 @@ const ProgressBlob = ({ onNavigateToProgress, userProgress }) => {
       </View>
 
       <View style={styles.blobContainer}>
-        <View style={styles.progressCard}>
+        <LinearGradient
+          colors={["#F8FAFC", "#E2E8F0"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.progressCardGradient}
+        >
           <Svg height="140" width="100%" viewBox="0 0 160 160">
             <Defs>
               <RadialGradient id="grad" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
@@ -225,7 +254,7 @@ const ProgressBlob = ({ onNavigateToProgress, userProgress }) => {
               Day {userProgress?.current_day || 1}/120
             </Text>
           </View>
-        </View>
+        </LinearGradient>
       </View>
     </TouchableOpacity>
   );
@@ -233,7 +262,7 @@ const ProgressBlob = ({ onNavigateToProgress, userProgress }) => {
 
 const styles = StyleSheet.create({
   progressSection: {
-    marginTop: 8,
+    marginTop: 0, // pulled closer to greeting
     marginBottom: 16,
   },
   sectionHeader: {
@@ -267,19 +296,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  progressCard: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: 16,
+  blobContainerMinimal: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    height: 140,
+  },
+  progressCardGradient: {
+    borderRadius: 20,
     padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowRadius: 12,
+    elevation: 5,
     alignSelf: 'stretch',
-    position: 'relative'
+    position: 'relative',
+    overflow: 'hidden',
   },
   progressTextTop: {
     position: 'absolute',
@@ -306,13 +341,13 @@ const styles = StyleSheet.create({
   progressPhase: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#666666',
+    color: '#64748B',
     marginBottom: 1
   },
   progressDays: {
-    fontSize: 13,
-    color: '#999999',
-    fontWeight: 'bold'
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '700'
   }
 });
 

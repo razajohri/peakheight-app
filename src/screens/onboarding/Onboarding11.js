@@ -1,60 +1,135 @@
-// Onboarding11.js (Page 11 - Pain)
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Linking, Alert } from 'react-native';
-import SleepSvg from '../../../assets/Onboarding Page 2.svg';
-import * as Haptics from 'expo-haptics';
+// Onboarding11.js (Page 11 - Losing Height Potential Every Night?)
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Animated } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import FloatingStars from '../../components/UI/FloatingStars';
+import ProgressHeader from '../../components/onboarding/ProgressHeader';
+import OnboardingButton from '../../components/onboarding/OnboardingButton';
+import { 
+  ONBOARDING_TYPOGRAPHY, 
+  ONBOARDING_SPACING,
+  ONBOARDING_COLORS 
+} from '../../utils/onboardingConstants';
 
-const Onboarding11 = ({ navigation }) => {
+const SLEEP_IMAGE = require('../../../assets/sleep potential.webp');
+const SLEEPING_PAGE_IMAGE = require('../../../assets/sleeping page.webp');
+
+const Onboarding11 = ({ navigation, data, updateData }) => {
+  // Animation values
+  const titleOpacity = useRef(new Animated.Value(0)).current;
+  const titleTranslateY = useRef(new Animated.Value(20)).current;
+  const imageOpacity = useRef(new Animated.Value(0)).current;
+  const imageScale = useRef(new Animated.Value(0.92)).current;
+
+  // Animate on mount
+  useEffect(() => {
+    // Start title and image animations in parallel with minimal delay
+    Animated.parallel([
+      // Title animation
+      Animated.parallel([
+        Animated.timing(titleOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.spring(titleTranslateY, {
+          toValue: 0,
+          tension: 80,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+      ]),
+      // Image animation (slight delay)
+      Animated.parallel([
+        Animated.timing(imageOpacity, {
+          toValue: 1,
+          duration: 350,
+          delay: 50,
+          useNativeDriver: true,
+        }),
+        Animated.spring(imageScale, {
+          toValue: 1,
+          tension: 60,
+          friction: 7,
+          delay: 50,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  }, []);
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: '73%' }]} />
-        </View>
-        <Text style={styles.progressText}>11/15</Text>
-      </View>
+      <FloatingStars />
+      <ProgressHeader 
+        currentStep={13} 
+        onBack={() => navigation.goBack()} 
+      />
 
       <View style={styles.contentContainer}>
-        <Text style={styles.title}>Losing height potential every night</Text>
+        <Animated.View
+          style={[
+            styles.titleSection,
+            {
+              opacity: titleOpacity,
+              transform: [{ translateY: titleTranslateY }],
+            },
+          ]}
+        >
+          <Text style={styles.title} numberOfLines={3} adjustsFontSizeToFit={true}>
+            Losing Height Potential Every Night?
+          </Text>
+        </Animated.View>
 
-        <View style={styles.imageContainer}>
-          <SleepSvg width={320} height={220} />
-        </View>
+        <Animated.View
+          style={[
+            styles.imageSection,
+            {
+              opacity: imageOpacity,
+              transform: [{ scale: imageScale }],
+            },
+          ]}
+        >
+          <View style={styles.imagesRow}>
+            <View style={styles.imageContainer}>
+              <Image
+                source={SLEEP_IMAGE}
+                style={styles.image}
+                contentFit="contain"
+                transition={200}
+              />
+            </View>
+            <View style={styles.rightImageContainer}>
+              <Image
+                source={SLEEPING_PAGE_IMAGE}
+                style={styles.rightImage}
+                contentFit="contain"
+                transition={200}
+              />
+            </View>
+          </View>
+        </Animated.View>
 
-        <Text style={styles.description}>
-          Your body releases the most growth hormones during deep sleep.
-        </Text>
-
-        <View style={styles.methodContainer}>
-          <TouchableOpacity
-            onPress={async () => {
-              try {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                const url = 'https://www.sleepfoundation.org/physical-health/how-sleep-affects-growth';
-                const supported = await Linking.canOpenURL(url);
-                if (supported) {
-                  await Linking.openURL(url);
-                } else {
-                  Alert.alert('Unable to open link');
-                }
-              } catch (e) {
-                Alert.alert('Unable to open link');
-              }
-            }}
-          >
-            <Text style={styles.methodLink}>View sources ↗</Text>
-          </TouchableOpacity>
-        </View>
+        <Animated.View
+          style={[
+            styles.infoSection,
+            {
+              opacity: imageOpacity,
+            },
+          ]}
+        >
+          <Text style={styles.infoText}>
+            Sleeping 8+ hours a day boosts growth hormone production by up to 75%, directly impacting height potential and testosterone level.
+          </Text>
+        </Animated.View>
       </View>
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.button}
+        <OnboardingButton
+          title="Continue"
           onPress={() => navigation.navigate('Onboarding12')}
-        >
-          <Text style={styles.buttonText}>Continue</Text>
-        </TouchableOpacity>
+        />
       </View>
     </SafeAreaView>
   );
@@ -63,101 +138,82 @@ const Onboarding11 = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 4,
-    marginBottom: 24,
-  },
-  progressBar: {
-    flex: 1,
-    height: 4,
-    backgroundColor: '#1f1f1f',
-    borderRadius: 2,
-    marginRight: 12,
-  },
-  progressFill: {
-    height: 4,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 2,
-  },
-  progressText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: '#9CA3AF',
+    backgroundColor: ONBOARDING_COLORS.BACKGROUND,
   },
   contentContainer: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingTop: ONBOARDING_SPACING.XS,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+  },
+  titleSection: {
+    width: '100%',
+    marginTop: ONBOARDING_SPACING.XS,
+    marginBottom: ONBOARDING_SPACING.LG,
+    paddingHorizontal: ONBOARDING_SPACING.PAGE_HORIZONTAL,
   },
   title: {
-    fontFamily: 'Inter-Bold',
+    ...ONBOARDING_TYPOGRAPHY.PAGE_TITLE,
     fontSize: 28,
-    color: '#FFFFFF',
-    marginBottom: 24,
-    letterSpacing: -0.5,
-    lineHeight: 36,
+    textAlign: 'center',
   },
-  imageContainer: {
-    alignItems: 'center',
-    marginBottom: 32,
+  imageSection: {
+    width: '100%',
+    height: 380,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    paddingRight: ONBOARDING_SPACING.PAGE_HORIZONTAL,
+    paddingLeft: ONBOARDING_SPACING.SM,
   },
-  splitContainer: {
+  imagesRow: {
     flexDirection: 'row',
     width: '100%',
-    height: 240,
-    borderRadius: 12,
+    height: 380,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: ONBOARDING_SPACING.MD,
+  },
+  imageContainer: {
+    width: '100%',
+    maxWidth: 220,
+    height: 380,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#1f1f1f',
   },
-  imageHalf: {
-    flex: 1,
-    height: '100%',
-  },
-  splitImage: {
+  image: {
     width: '100%',
     height: '100%',
   },
-  description: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 16,
-    color: '#FFFFFF',
-    lineHeight: 24,
-    marginBottom: 24,
+  rightImageContainer: {
+    flex: 1,
+    height: 300,
   },
-  methodContainer: {
-    alignItems: 'flex-start',
+  rightImage: {
+    width: '100%',
+    height: '100%',
   },
-  methodLink: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 16,
-    color: '#9CA3AF',
+  infoSection: {
+    width: '100%',
+    paddingHorizontal: ONBOARDING_SPACING.PAGE_HORIZONTAL,
+    marginTop: ONBOARDING_SPACING.LG,
+    alignItems: 'center',
+    marginBottom: ONBOARDING_SPACING.LG,
+  },
+  infoText: {
+    ...ONBOARDING_TYPOGRAPHY.BODY,
+    fontSize: 14,
+    textAlign: 'center',
+    color: ONBOARDING_COLORS.TEXT_SECONDARY,
+    lineHeight: 20,
   },
   buttonContainer: {
-    padding: 24,
-  },
-  button: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#1f1f1f',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  buttonText: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 16,
-    color: '#000000',
+    paddingHorizontal: ONBOARDING_SPACING.PAGE_HORIZONTAL,
+    paddingBottom: 40,
+    paddingTop: ONBOARDING_SPACING.LG,
   },
 });
 
 export default Onboarding11;
+

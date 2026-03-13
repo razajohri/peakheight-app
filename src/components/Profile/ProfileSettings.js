@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Switch } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { View, Text, TouchableOpacity } from 'react-native';
+import Icon from '../UI/Icon';
 
-export default function ProfileSettings({ styles, notificationsEnabled, setNotificationsEnabled, onTestNotifications, HapticFeedback }) {
+export default function ProfileSettings({ styles, onFeedbackPress, HapticFeedback }) {
   return (
     <View className="section" style={styles.section}>
       <Text style={styles.sectionTitle}>SETTINGS</Text>
@@ -11,25 +11,15 @@ export default function ProfileSettings({ styles, notificationsEnabled, setNotif
           style={styles.settingItem}
           onPress={() => {
             HapticFeedback?.light?.();
-            setNotificationsEnabled(!notificationsEnabled);
+            onFeedbackPress?.();
           }}
         >
           <View style={styles.settingLeft}>
-            <View style={styles.settingIconContainer}><Icon name="notifications" size={20} color="#3B5FE3" /></View>
-            <Text style={styles.settingLabel}>Push Notifications</Text>
+            <View style={styles.settingIconContainer}><Icon name="chatbubble-ellipses-outline" size={20} color="#3B5FE3" /></View>
+            <Text style={styles.settingLabel}>Send Feedback</Text>
           </View>
-          <Switch
-            value={notificationsEnabled}
-            onValueChange={(value) => {
-              HapticFeedback?.light?.();
-              setNotificationsEnabled(value);
-            }}
-            trackColor={{ false: '#E5E5E5', true: '#3B5FE3' }}
-            thumbColor={notificationsEnabled ? '#FFFFFF' : '#FFFFFF'}
-          />
+          <Icon name="chevron-forward" size={20} color="#999999" />
         </TouchableOpacity>
-
-        {/* Removed Test Notifications option */}
       </View>
     </View>
   );

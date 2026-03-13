@@ -7,10 +7,11 @@ import {
   StyleSheet,
   Dimensions,
   Alert,
-  SafeAreaView,
   StatusBar,
+  DeviceEventEmitter,
+  Platform,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import Icon from '../components/UI/Icon';
 import { Calendar, Flame, CheckCircle } from 'lucide-react-native';
 import Svg, { Circle } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -21,51 +22,62 @@ import { useUser } from '../contexts/UserContext';
 import HapticFeedback from '../utils/hapticFeedback';
 import { supabase } from '../config/supabase';
 import CelebrationModal from '../components/UI/CelebrationModal';
+import ConfettiAnimation from '../components/UI/ConfettiAnimation';
 import DailyHeader from '../components/Daily/DailyHeader';
 import DateSelector from '../components/Daily/DateSelector';
 import PlanOverview from '../components/Daily/PlanOverview';
 import TasksList from '../components/Daily/TasksList';
 import WeeklyPlan from '../components/Daily/WeeklyPlan';
 import WeeklySummary from '../components/Daily/WeeklySummary';
+import StreaksSection from '../components/Daily/StreaksSection';
+import ProgressSummary from '../components/Daily/ProgressSummary';
+import DayCompletionMessage from '../components/Daily/DayCompletionMessage';
 import NotificationService from '../services/notificationService';
 import { SoundService } from '../services/soundService';
+import { useWeeklyPlan } from '../hooks/useWeeklyPlan';
+import { generateWeekDates, formatDate, getPlanDescription, formatDayLabel } from '../utils/dailyRoutineUtils';
+import HeightMeasurement from '../components/Progress/HeightMeasurement';
+import StreakModal from '../components/Home/StreakModal';
+import StreakFreezeModal from '../components/Home/StreakFreezeModal';
+import SeedRetentionModal from '../components/Home/SeedRetentionModal';
+import { StreakFreezeService } from '../services/streakFreezeService';
+import * as Haptics from 'expo-haptics';
 // useFocusEffect removed to avoid navigation dependency; using navigation listener instead
 
 const { width } = Dimensions.get('window');
 
-export default function DailyRoutineScreen({ navigation, onNavigateToProfile }) {
+export default function DailyRoutineScreen({ navigation, onNavigateToProfile, onNavigateToHub }) {
   const { colors } = useTheme();
-  const { userProfile } = useUser();
+  const { userProfile, userProgress, fetchUserProfile } = useUser();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [dailyTasks, setDailyTasks] = useState([]);
   const [completedTasks, setCompletedTasks] = useState([]);
   const [streak, setStreak] = useState(0);
   const [currentDay, setCurrentDay] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [userProgress, setUserProgress] = useState(null);
+  const [loading, setLoading] = useState(true); // Start with true for brief loading
+  const [hasShownLoading, setHasShownLoading] = useState(false); // Track if we've shown loading
+  const [userProgressLocal, setUserProgressLocal] = useState(null);
   const [isDayCompleted, setIsDayCompleted] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationMessage, setCelebrationMessage] = useState('');
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [isStreakModalVisible, setStreakModalVisible] = useState(false);
+  const [isFreezeModalVisible, setFreezeModalVisible] = useState(false);
+  const [isSeedRetentionModalVisible, setSeedRetentionModalVisible] = useState(false);
+  const [freezeStatus, setFreezeStatus] = useState({ available: false, previousStreak: 0, currentStreak: 0 });
 
-  // Weekly plan state
-  const [selectedWeek, setSelectedWeek] = useState(1);
-  const [selectedDayIndex, setSelectedDayIndex] = useState(null);
-  const [plan, setPlan] = useState(null);
-  const [weeklyStreak, setWeeklyStreak] = useState(0);
-
-  // Generate dates for the week
-  const generateWeekDates = () => {
-    const dates = [];
-    const today = new Date();
-
-    for (let i = -3; i <= 3; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      dates.push(date);
-    }
-
-    return dates;
-  };
+  // Weekly plan state via hook
+  const {
+    selectedWeek,
+    setSelectedWeek,
+    selectedDayIndex,
+    setSelectedDayIndex,
+    plan,
+    weeklyStreak,
+    initializeWeeklyPlan,
+    toggleTask: weeklyToggleTask,
+    completeDay: weeklyCompleteDay,
+  } = useWeeklyPlan();
 
   const weekDates = generateWeekDates();
 
@@ -76,13 +88,60 @@ export default function DailyRoutineScreen({ navigation, onNavigateToProfile }) 
     }
   }, [userProfile]);
 
+  // Auto-hide loading after 500ms maximum
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (loading && !hasShownLoading) {
+        setLoading(false);
+        setHasShownLoading(true);
+      }
+    }, 500); // Maximum 500ms loading
+
+    return () => clearTimeout(timer);
+  }, [loading, hasShownLoading]);
+
   useEffect(() => {
     if (!userProfile) return;
     if (!hasInitializedRef.current) return; // avoid duplicate load on first mount
-    loadDailyData();
+    // When date changes, force refresh to get latest data
+    loadDailyData(undefined, true);
   }, [selectedDate, userProfile]);
 
   const hasInitializedRef = useRef(false);
+  const cacheKeyRef = useRef(null);
+
+  // Cache key helper
+  const getCacheKey = (userId, dayNumber) => {
+    return `daily_tasks_cache_${userId}_${dayNumber}`;
+  };
+
+  // Invalidate cache when tasks are updated
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('dailyTasksUpdated', async () => {
+      if (cacheKeyRef.current && userProfile?.id) {
+        try {
+          await AsyncStorage.removeItem(cacheKeyRef.current);
+        } catch (error) {
+          console.warn('Error invalidating cache:', error);
+        }
+      }
+    });
+
+    return () => {
+      subscription?.remove();
+    };
+  }, [userProfile?.id]);
+
+  // Fetch freeze status
+  useEffect(() => {
+    const fetchFreezeStatus = async () => {
+      if (userProfile?.id) {
+        const status = await StreakFreezeService.getFreezeStatus(userProfile.id);
+        setFreezeStatus(status);
+      }
+    };
+    fetchFreezeStatus();
+  }, [userProfile?.id]);
 
   // Refresh streak from DB whenever this screen gains focus
   useEffect(() => {
@@ -93,8 +152,39 @@ export default function DailyRoutineScreen({ navigation, onNavigateToProfile }) 
         if (!userProfile) return;
         const latest = await DailyPlanService.getUserProgress(userProfile.id);
         if (isActive && latest) {
-          setUserProgress(latest);
+          setUserProgressLocal(latest);
           setStreak(latest.current_streak || 0);
+          
+          // Check if day changed - if so, invalidate cache for old day and load new day
+          if (latest.current_day !== currentDay) {
+            // Day changed - clear old cache and reload with force refresh
+            if (cacheKeyRef.current) {
+              try {
+                await AsyncStorage.removeItem(cacheKeyRef.current);
+              } catch (error) {
+                console.warn('Error clearing old day cache:', error);
+              }
+            }
+            setCurrentDay(latest.current_day);
+            await loadDailyData(latest.current_day, true);
+          } else {
+            // Same day - just reschedule reminders if needed (use cached data if available)
+            const cacheKey = getCacheKey(userProfile.id, latest.current_day);
+            try {
+              const cachedData = await AsyncStorage.getItem(cacheKey);
+              const dayTasks = cachedData ? JSON.parse(cachedData) : await DailyPlanService.getDailyTasks(userProfile.id, latest.current_day);
+              if (dayTasks && !dayTasks.is_completed && dayTasks.tasks && dayTasks.tasks.length > 0) {
+                NotificationService.scheduleTaskReminders(
+                  userProfile.id,
+                  latest.current_day,
+                  dayTasks.tasks,
+                  dayTasks.completed_tasks || []
+                );
+              }
+            } catch (error) {
+              console.warn('Error checking reminders on focus:', error);
+            }
+          }
         }
       } catch {}
     });
@@ -102,72 +192,149 @@ export default function DailyRoutineScreen({ navigation, onNavigateToProfile }) 
       isActive = false;
       if (typeof unsubscribe === 'function') unsubscribe();
     };
-  }, [navigation, userProfile?.id]);
+  }, [navigation, userProfile?.id, currentDay]);
 
   const initializeDailyRoutine = async () => {
     try {
-      setLoading(true);
       // Ensure user's plan exists and current day is synced
       const progress = await DailyPlanService.syncCurrentDay(userProfile.id);
-      setUserProgress(progress);
+      setUserProgressLocal(progress);
       setCurrentDay(progress.current_day);
       setStreak(progress.current_streak || 0);
 
-      // Load today's tasks
+      // Load today's tasks - this will set loading to false when done
       await loadDailyData(progress.current_day);
 
-      // Ensure streak reflects latest DB value after any prior completions
-      try {
-        const latest = await DailyPlanService.getUserProgress(userProfile.id);
-        if (latest) {
-          setUserProgress(latest);
-          setStreak(latest.current_streak || 0);
-        }
-      } catch {}
       hasInitializedRef.current = true;
     } catch (error) {
       console.error('Error initializing daily routine:', error);
-    } finally {
-      setLoading(false);
+      setLoading(false); // Hide loading on error
     }
   };
 
-  const loadDailyData = async (dayOverride) => {
+  const loadDailyData = async (dayOverride, forceRefresh = false) => {
     try {
-      if (!userProfile) return;
+      if (!userProfile) {
+        setLoading(false);
+        return;
+      }
       const dayToLoad = dayOverride || currentDay;
-      // Get current day's tasks
-      const dayTasks = await DailyPlanService.getDailyTasks(userProfile.id, dayToLoad);
+      const cacheKey = getCacheKey(userProfile.id, dayToLoad);
+      cacheKeyRef.current = cacheKey;
+      
+      console.log('🔍 Starting to load daily data for day:', dayToLoad, 'User:', userProfile.id);
+      
+      let dayTasks = null;
+      
+      // Try to load from cache first (unless force refresh)
+      if (!forceRefresh) {
+        try {
+          const cachedData = await AsyncStorage.getItem(cacheKey);
+          if (cachedData) {
+            dayTasks = JSON.parse(cachedData);
+            console.log('✅ Loaded daily tasks from cache for day', dayToLoad);
+            
+            // Update UI immediately with cached data
+            setDailyTasks(dayTasks.tasks || []);
+            setCompletedTasks(dayTasks.completed_tasks || []);
+            setIsDayCompleted(dayTasks.is_completed || false);
+            setLoading(false);
+            setHasShownLoading(true);
+            
+            // Schedule reminders in background (fire-and-forget)
+            if (!dayTasks.is_completed && dayTasks.tasks && dayTasks.tasks.length > 0) {
+              NotificationService.scheduleTaskReminders(
+                userProfile.id,
+                dayToLoad,
+                dayTasks.tasks,
+                dayTasks.completed_tasks || []
+              ).catch(err => console.warn('Background notification scheduling error:', err));
+            } else if (dayTasks.is_completed) {
+              NotificationService.cancelTaskReminders(userProfile.id, dayToLoad)
+                .catch(err => console.warn('Background notification cancellation error:', err));
+            }
+            
+            // Return early - no need to fetch from database
+            return;
+          }
+        } catch (cacheError) {
+          console.warn('Error reading cache, will fetch from database:', cacheError);
+        }
+      }
+      
+      // Cache miss or force refresh - fetch from database
+      console.log('📡 Fetching daily tasks from database for day', dayToLoad);
+      dayTasks = await DailyPlanService.getDailyTasks(userProfile.id, dayToLoad);
+      console.log('📦 Received dayTasks:', dayTasks ? 'exists' : 'null');
 
       if (dayTasks) {
+        console.log('📋 Loading daily tasks for day', dayToLoad);
+        console.log('   Tasks count:', dayTasks.tasks?.length || 0);
+        console.log('   Completed tasks count:', dayTasks.completed_tasks?.length || 0);
+        console.log('   Is completed:', dayTasks.is_completed);
+        
+        // Save to cache
+        try {
+          await AsyncStorage.setItem(cacheKey, JSON.stringify(dayTasks));
+          console.log('💾 Cached daily tasks for day', dayToLoad);
+        } catch (cacheError) {
+          console.warn('Error saving to cache:', cacheError);
+        }
+        
+        // Update UI immediately with task data
         setDailyTasks(dayTasks.tasks || []);
         setCompletedTasks(dayTasks.completed_tasks || []);
         setIsDayCompleted(dayTasks.is_completed || false);
-        // Refresh streak from DB alongside task load
-        try {
-          const latest = await DailyPlanService.getUserProgress(userProfile.id);
-          if (latest) {
-            setUserProgress(latest);
-            setStreak(latest.current_streak || 0);
+        setLoading(false); // Hide loading immediately - don't wait for background operations
+        setHasShownLoading(true);
+        
+        // Schedule reminders in background (fire-and-forget, don't block UI)
+        if (!dayTasks.is_completed && dayTasks.tasks && dayTasks.tasks.length > 0) {
+          NotificationService.scheduleTaskReminders(
+            userProfile.id,
+            dayToLoad,
+            dayTasks.tasks,
+            dayTasks.completed_tasks || []
+          ).catch(err => console.warn('Background notification scheduling error:', err));
+        } else if (dayTasks.is_completed) {
+          NotificationService.cancelTaskReminders(userProfile.id, dayToLoad)
+            .catch(err => console.warn('Background notification cancellation error:', err));
           }
-        } catch {}
       } else {
         // If missing, try generate and reload
         await DailyPlanService.generateDailyTasks(userProfile.id, dayToLoad);
         const regenerated = await DailyPlanService.getDailyTasks(userProfile.id, dayToLoad);
+        
+        // Save regenerated data to cache
+        if (regenerated) {
+          try {
+            await AsyncStorage.setItem(cacheKey, JSON.stringify(regenerated));
+            console.log('💾 Cached regenerated daily tasks for day', dayToLoad);
+          } catch (cacheError) {
+            console.warn('Error saving regenerated data to cache:', cacheError);
+          }
+        }
+        
+        // Update UI immediately with regenerated data
         setDailyTasks(regenerated?.tasks || []);
         setCompletedTasks(regenerated?.completed_tasks || []);
         setIsDayCompleted(regenerated?.is_completed || false);
-        try {
-          const latest = await DailyPlanService.getUserProgress(userProfile.id);
-          if (latest) {
-            setUserProgress(latest);
-            setStreak(latest.current_streak || 0);
+        setLoading(false); // Hide loading immediately
+        setHasShownLoading(true);
+        
+        // Schedule reminders in background (fire-and-forget)
+        if (regenerated && !regenerated.is_completed && regenerated.tasks && regenerated.tasks.length > 0) {
+          NotificationService.scheduleTaskReminders(
+            userProfile.id,
+            dayToLoad,
+            regenerated.tasks,
+            regenerated.completed_tasks || []
+          ).catch(err => console.warn('Background notification scheduling error:', err));
           }
-        } catch {}
       }
     } catch (error) {
       console.error('Error loading daily data:', error);
+      setLoading(false); // Hide loading on error
     }
   };
 
@@ -176,17 +343,6 @@ export default function DailyRoutineScreen({ navigation, onNavigateToProfile }) 
     return date.toDateString() === today.toDateString();
   };
 
-  const getPlanDescription = (day) => {
-    if (day <= 30) {
-      return "Building foundational habits for height growth";
-    } else if (day <= 60) {
-      return "Advancing to intensive growth exercises";
-    } else if (day <= 90) {
-      return "Optimizing your growth potential";
-    } else {
-      return "Maintaining your growth achievements";
-    }
-  };
 
   const resetPlan = async () => {
     try {
@@ -243,83 +399,66 @@ export default function DailyRoutineScreen({ navigation, onNavigateToProfile }) 
 
     Alert.alert(
       'Plan Progress',
-      `You're on Day ${currentDay} of 120\n\nProgress: ${progressPercentage}%\nDays Remaining: ${daysRemaining}\nCurrent Streak: ${streak} days\nPhase: ${userProgress ? DailyPlanService.getPhaseForDay(currentDay) : 'Loading...'}`,
+      `You're on Day ${currentDay} of 120\n\nProgress: ${progressPercentage}%\nDays Remaining: ${daysRemaining}\nCurrent Streak: ${streak} days\nPhase: ${userProgressLocal ? DailyPlanService.getPhaseForDay(currentDay) : 'Loading...'}`,
       [{ text: 'OK' }]
     );
   };
 
+  const handleConfettiComplete = () => {
+    setShowConfetti(false);
+  };
 
+
+  // IMPORTANT: This function should ONLY be called when user explicitly clicks/taps a task
+  // Never auto-complete tasks or call this function programmatically without user interaction
   const toggleTaskCompletion = async (taskId) => {
     try {
-      if (!userProfile || isDayCompleted) return;
-
-      // Check if this is the special exercise task
-      const task = dailyTasks.find(t => t.id === taskId);
-      if (task && task.isSpecial && task.title === "Complete today's exercise from Hub") {
-        // Mark the exercise task as completed (same path as other tasks)
-        const result = await DailyPlanService.completeTask(userProfile.id, currentDay, taskId);
-
-        // Update local state
-        if (!completedTasks.includes(taskId)) {
-          setCompletedTasks(prev => [...prev, taskId]);
-        }
-
-        // Show celebration
-        setCelebrationMessage('Great job! Exercise task completed! 💪');
-        setShowCelebration(true);
-
-        // Check if all tasks are now completed
-        const newCompletedCount = (completedTasks.includes(taskId) ? completedTasks.length : completedTasks.length + 1);
-        const totalCount = dailyTasks.length;
-
-        if (newCompletedCount === totalCount) {
-          setIsDayCompleted(true);
-          await SoundService.playCompletionSound();
-
-          // Update streak if provided, otherwise fetch latest
-          if (result.streak) {
-            setStreak(result.streak.current_streak);
-            setUserProgress(prev => ({
-              ...prev,
-              current_streak: result.streak.current_streak,
-              total_streak: result.streak.total_streak,
-              longest_streak: result.streak.longest_streak
-            }));
-            await NotificationService.checkStreakMilestones(userProfile.id);
-          } else {
-            try {
-              const latest = await DailyPlanService.getUserProgress(userProfile.id);
-              setStreak(latest?.current_streak || 1);
-              setUserProgress(prev => ({ ...prev, current_streak: latest?.current_streak || 1 }));
-            } catch {}
-          }
-
-          // Success haptic and final celebration message
-          HapticFeedback.success();
-          let message = `Congratulations! You've completed Day ${currentDay} of your 120-day growth plan!`;
-          message += `\n\nYour streak: ${result.streak?.current_streak || streak} days!`;
-          message += `\n\nCome back tomorrow for Day ${currentDay + 1} tasks!`;
-          setCelebrationMessage(message);
-          setShowCelebration(true);
-        }
+      if (!userProfile) {
+        console.warn('Cannot complete task: user profile not available');
         return;
       }
+
+      // Validate taskId
+      if (!taskId) {
+        console.error('Cannot complete task: taskId is missing');
+        return;
+      }
+
+      // Allow task completion even if day is marked as completed
+      // This enables users to complete newly added supplements/tasks
+      // The backend will properly recalculate day completion status
+
+      // OPTIMISTIC UI UPDATE - Update UI immediately for instant feedback
+      const isCurrentlyCompleted = completedTasks.includes(taskId);
+      
+      // Prevent uncompleting tasks - once completed, they stay completed
+      if (isCurrentlyCompleted) {
+        console.log('Task already completed, cannot undo');
+        return;
+      }
+      
+      const newCompletedTasks = [...completedTasks, taskId];
+
+      // Update local state immediately
+      setCompletedTasks(newCompletedTasks);
+
+      // Invalidate cache when task is updated (will be reloaded on next visit)
+      if (cacheKeyRef.current) {
+        try {
+          await AsyncStorage.removeItem(cacheKeyRef.current);
+        } catch (error) {
+          console.warn('Error invalidating cache on task update:', error);
+        }
+      }
+
+      // Notify other components (e.g., GrowthFactors) to refresh their data
+      DeviceEventEmitter.emit('dailyTasksUpdated');
 
       // Add haptic feedback for task interaction
       HapticFeedback.medium();
 
-      // Complete task using DailyPlanService
-      const result = await DailyPlanService.completeTask(userProfile.id, currentDay, taskId);
-
-      // Update local state
-      const newCompletedTasks = completedTasks.includes(taskId)
-        ? completedTasks.filter(id => id !== taskId)
-        : [...completedTasks, taskId];
-
-      setCompletedTasks(newCompletedTasks);
-
-      // Show celebration for individual task completion (if not all tasks completed)
-      if (!result.isCompleted) {
+      // Show immediate celebration for individual task completion
+      if (!isCurrentlyCompleted) {
         const completedCount = newCompletedTasks.length;
         const totalCount = dailyTasks.length;
 
@@ -327,44 +466,86 @@ export default function DailyRoutineScreen({ navigation, onNavigateToProfile }) 
         setShowCelebration(true);
       }
 
-      // Update streak if all tasks completed
-      if (result.isCompleted) {
+      // Check if all tasks are now completed (optimistic check)
+      // Only show celebration if this is the first time completing all tasks
+      if (newCompletedTasks.length === dailyTasks.length && !isDayCompleted) {
         setIsDayCompleted(true);
-        // Play completion sound
         await SoundService.playCompletionSound();
 
-        // Use the streak data returned from completeTask, or fetch latest as fallback
-        if (result.streak) {
-          setStreak(result.streak.current_streak);
-          setUserProgress(prev => ({
-            ...prev,
-            current_streak: result.streak.current_streak,
-            total_streak: result.streak.total_streak,
-            longest_streak: result.streak.longest_streak
-          }));
-          await NotificationService.checkStreakMilestones(userProfile.id);
-        } else {
-          try {
-            const latest = await DailyPlanService.getUserProgress(userProfile.id);
-            setStreak(latest?.current_streak || 1);
-            setUserProgress(prev => ({ ...prev, current_streak: latest?.current_streak || 1 }));
-          } catch {}
-        }
+        // Trigger confetti animation
+        setShowConfetti(true);
 
-        // Add success haptic feedback for day completion
+        // Success haptic and final celebration message
         HapticFeedback.success();
-
-        // Show completion celebration
-        let message = `Congratulations! You've completed Day ${currentDay} of your 120-day growth plan!\n\nYour streak: ${result.streak?.current_streak || streak} days!`;
-
+        let message = `Congratulations! You've completed Day ${currentDay} of your 120-day growth plan!`;
+        message += `\n\nYour streak: ${streak + 1} days!`;
         message += `\n\nCome back tomorrow for Day ${currentDay + 1} tasks!`;
-
         setCelebrationMessage(message);
         setShowCelebration(true);
+      } else if (newCompletedTasks.length < dailyTasks.length && isDayCompleted) {
+        // If day was completed but now has incomplete tasks, mark as incomplete
+        setIsDayCompleted(false);
       }
 
+      // BACKGROUND DATABASE UPDATE - Don't wait for this
+      DailyPlanService.completeTask(userProfile.id, currentDay, taskId)
+        .then(async (result) => {
+          // Update day completion status from backend result
+          // This ensures accuracy when new supplements are added after day completion
+          setIsDayCompleted(result.isCompleted);
+          
+          // Update streak data in background if all tasks completed
+          if (result.isCompleted && result.streak) {
+            setStreak(result.streak.current_streak);
+            setUserProgressLocal(prev => ({
+              ...prev,
+              current_streak: result.streak.current_streak,
+              total_streak: result.streak.total_streak,
+              longest_streak: result.streak.longest_streak
+            }));
+            NotificationService.checkStreakMilestones(userProfile.id);
+            // Cancel all task reminders since day is completed
+            NotificationService.cancelTaskReminders(userProfile.id, currentDay);
+          } else {
+            // Day is no longer complete (e.g., user unchecked a task or added new tasks)
+            // Update reminders for remaining incomplete tasks
+            NotificationService.scheduleTaskReminders(
+              userProfile.id,
+              currentDay,
+              dailyTasks,
+              newCompletedTasks
+            );
+          }
+
+          // Invalidate cache after server confirms task completion
+          if (cacheKeyRef.current) {
+            try {
+              await AsyncStorage.removeItem(cacheKeyRef.current);
+            } catch (error) {
+              console.warn('Error invalidating cache after task completion:', error);
+            }
+          }
+
+          // Emit again after server confirms for robustness
+          DeviceEventEmitter.emit('dailyTasksUpdated');
+
+          // Reload fresh data from backend so completed tasks can't \"undo\"
+          // when revisiting the screen (avoids stale cache or local state)
+          await loadDailyData(currentDay, true);
+        })
+        .catch(error => {
+          console.error('Background task completion failed:', error);
+          // Keep optimistic UI state (completed checkmarks) so tasks don't flip back
+          // Show error message so user knows backend failed
+          setCelebrationMessage('Task completion saved locally, but sync failed. Please try again later.');
+          setShowCelebration(true);
+        });
+
     } catch (error) {
-      console.error('Error toggling task completion:', error);
+      console.error('Error in toggleTaskCompletion:', error);
+      // Keep optimistic UI state; just notify user
+      setCelebrationMessage('Something went wrong while saving your progress. Your checkmarks are kept.');
+      setShowCelebration(true);
     }
   };
 
@@ -392,200 +573,71 @@ export default function DailyRoutineScreen({ navigation, onNavigateToProfile }) 
     }
   };
 
-  const formatDate = (date) => {
-    const day = date.getDate();
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const month = monthNames[date.getMonth()];
-    return `${day} ${month}`;
-  };
 
-  // -------- Weekly Plan Logic --------
-  const PLAN_STORAGE_KEY = 'ph_weekly_plan_v1';
-  const STREAK_KEY = 'ph_weekly_streak_v1';
-  const PERSIST_ENABLED = false;
+  // Weekly plan implementation moved into useWeeklyPlan hook
 
-  const safeSetItem = async (key, value) => {
-    try {
-      if (!PERSIST_ENABLED) return;
-      let str;
-      if (typeof value === 'string') {
-        str = value;
-      } else {
-        str = JSON.stringify(value);
-      }
-      if (str == null) {
-        str = JSON.stringify({});
-      }
-      await AsyncStorage.setItem(key, str);
-    } catch (e) {
-      console.error('AsyncStorage setItem failed for key', key, e);
-    }
-  };
+  // initializeWeeklyPlan now provided by useWeeklyPlan
 
-  const defaultDayBlocks = () => ([
-    {
-      id: 'stretching',
-      title: 'Stretching & Posture',
-      tasks: [
-        { id: 'seated_twist', title: 'Seated twist 1 min', done: false },
-        { id: 'pigeon', title: 'Pigeon both sides', done: false },
-      ],
-    },
-    {
-      id: 'sleep',
-      title: 'Sleep Habits',
-      tasks: [
-        { id: 'screens_off', title: 'Screens off 30m before bed', done: false },
-        { id: 'bedtime', title: 'Fixed bedtime', done: false },
-      ],
-    },
-    {
-      id: 'nutrition',
-      title: 'Nutrition',
-      tasks: [
-        { id: 'water', title: 'Drink 8 glasses water', done: false },
-        { id: 'protein', title: 'Hit protein goal', done: false },
-      ],
-    },
-  ]);
 
-  const generateDefaultPlan = () => {
-    const weeks = 4;
-    const daysPerWeek = 7;
-    const baseDate = new Date();
-    baseDate.setHours(0,0,0,0);
 
-    const planObj = {
-      weeks: Array.from({ length: weeks }, (_, w) => ({
-        weekNumber: w + 1,
-        days: Array.from({ length: daysPerWeek }, (_, d) => ({
-          index: d,
-          date: new Date(baseDate.getTime() + (w * daysPerWeek + d) * 24 * 60 * 60 * 1000).toISOString(),
-          completed: false,
-          locked: w > 0,
-          blocks: defaultDayBlocks(),
-        })),
-      })),
-    };
-    return planObj;
-  };
+  const toggleTask = weeklyToggleTask;
 
-  const initializeWeeklyPlan = async () => {
-    try {
-      if (!PERSIST_ENABLED) {
-        const generated = generateDefaultPlan();
-        setPlan(generated);
-        setWeeklyStreak(0);
-        return;
-      }
-
-      const saved = await AsyncStorage.getItem(PLAN_STORAGE_KEY);
-      const savedStreak = await AsyncStorage.getItem(STREAK_KEY);
-      if (saved) {
-        setPlan(JSON.parse(saved));
-      } else {
-        const generated = generateDefaultPlan();
-        setPlan(generated);
-        await safeSetItem(PLAN_STORAGE_KEY, generated);
-      }
-      setWeeklyStreak(savedStreak ? parseInt(savedStreak) : 0);
-    } catch (e) {
-      console.error('initializeWeeklyPlan error', e);
-    }
-  };
-
-  const persistPlan = async (nextPlan) => {
-    setPlan(nextPlan);
-    await safeSetItem(PLAN_STORAGE_KEY, nextPlan);
-  };
-
-  const formatDayLabel = (iso) => {
-    const d = new Date(iso);
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const month = monthNames[d.getMonth()];
-    const day = d.getDate();
-    return `${month} ${day}`;
-  };
-
-  const toggleTask = (weekIdx, dayIdx, blockId, taskId) => {
-    if (!plan) return;
-    const next = { ...plan };
-    const day = next.weeks[weekIdx].days[dayIdx];
-    if (day.locked) return;
-    const block = day.blocks.find(b => b.id === blockId);
-    if (!block) return;
-    const task = block.tasks.find(t => t.id === taskId);
-    if (!task) return;
-    task.done = !task.done;
-    persistPlan(next);
-  };
-
-  const completeDay = async (weekIdx, dayIdx) => {
-    if (!plan) return;
-    const next = { ...plan };
-    const week = next.weeks[weekIdx];
-    const day = week.days[dayIdx];
-    if (day.locked) return;
-
-    day.blocks.forEach(b => b.tasks.forEach(t => t.done = true));
-    day.completed = true;
-
-    const allDaysDone = week.days.every(d => d.completed);
-    if (allDaysDone && next.weeks[weekIdx + 1]) {
-      next.weeks[weekIdx + 1].days.forEach(d => d.locked = false);
-    }
-
-    try {
-      const todayKey = new Date().toDateString();
-      const dayKey = new Date(day.date).toDateString();
-      if (todayKey === dayKey) {
-        const nextStreak = weeklyStreak + 1;
-        setWeeklyStreak(nextStreak);
-        await safeSetItem(STREAK_KEY, String(nextStreak));
-      }
-    } catch {}
-
-    await persistPlan(next);
-  };
+  const completeDay = weeklyCompleteDay;
 
   const isDateSelected = (date) => {
     return date.toDateString() === selectedDate.toDateString();
   };
 
-  const progressPercentage = dailyTasks.length > 0 ? (completedTasks.length / dailyTasks.length) * 100 : 0;
+  // Brief loading state (less than 1 second)
+  const safeUserProgress = userProgressLocal || { current_day: 1, current_streak: 0 };
+  const safeDailyTasks = dailyTasks || [];
+  const safeCompletedTasks = completedTasks || [];
 
-  if (loading) {
+  const progressPercentage = safeDailyTasks.length > 0 ? (safeCompletedTasks.length / safeDailyTasks.length) * 100 : 0;
+
+  // Show brief loading only if loading is true and we haven't shown it yet
+  if (loading && !hasShownLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
         <View style={styles.loadingContainer}>
           <Text style={[styles.loadingText, { color: colors.textPrimary }]}>
-            Loading daily routine...
+            Loading today's tasks...
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        bounces={false}
+        alwaysBounceVertical={false}
+        scrollEnabled={true}
+        overScrollMode={Platform.OS === 'android' ? 'never' : undefined}
+        contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'never' : undefined}
+        automaticallyAdjustContentInsets={Platform.OS === 'ios' ? false : undefined}
+        contentInset={Platform.OS === 'ios' ? { top: 0, bottom: 0, left: 0, right: 0 } : undefined}
+        scrollEventThrottle={16}
       >
         <DailyHeader
           styles={styles}
           colors={colors}
           currentDay={currentDay}
-          phase={userProgress ? DailyPlanService.getPhaseForDay(currentDay) : 'Loading...'}
-          onPressSettings={() => {
-            if (typeof onNavigateToProfile === 'function') {
-              onNavigateToProfile();
-            } else if (navigation && navigation.navigate) {
-              navigation.navigate('profile');
-            }
+          phase={safeUserProgress ? DailyPlanService.getPhaseForDay(currentDay) : 'Growth Hormone'}
+          onPressStreak={async () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            await SoundService.playStreakSound();
+            setStreakModalVisible(true);
+          }}
+          onPressShield={async () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setSeedRetentionModalVisible(true);
           }}
         />
 
@@ -597,91 +649,45 @@ export default function DailyRoutineScreen({ navigation, onNavigateToProfile }) 
           setSelectedDate={setSelectedDate}
           formatDate={formatDate}
           isDateSelected={isDateSelected}
+          allowDateSelection={false}
         />
 
-        <PlanOverview
+        <StreaksSection
           styles={styles}
           colors={colors}
-          currentDay={currentDay}
-          phaseText={userProgress ? DailyPlanService.getPhaseForDay(currentDay) : 'Loading...'}
-          descriptionText={getPlanDescription(currentDay)}
+          streak={streak}
+          showCelebration={showCelebration}
           onViewProgress={viewPlanProgress}
-          onReset={resetPlan}
         />
-
-        {/* Streaks Section */}
-        <View style={styles.streaksSection}>
-          <View style={styles.streaksHeader}>
-            <View style={styles.streaksTitle}>
-              {!showCelebration && (
-                <Flame size={20} color="#FF6B35" />
-              )}
-              <Text style={[styles.streaksLabel, { color: colors.textPrimary }]}>
-                Streaks
-              </Text>
-            </View>
-            <View style={[styles.streakBadge, { backgroundColor: colors.accent }]}>
-              <Text style={[styles.streakNumber, { color: colors.surfaceElevated }]}>
-                {streak}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Progress Section */}
-        <View style={styles.progressSection}>
-          <View style={styles.progressHeader}>
-            <Text style={[styles.progressLabel, { color: colors.textPrimary }]}>
-              Today's Tasks
-            </Text>
-            <Text style={[styles.progressCount, { color: colors.textSecondary }]}>
-              {completedTasks.length}/{dailyTasks.length} completed
-            </Text>
-          </View>
-
-          {/* Progress Bar */}
-          <View style={[styles.progressBarContainer, { backgroundColor: colors.border }]}>
-            <View
-              style={[
-                styles.progressBar,
-                {
-                  width: `${progressPercentage}%`,
-                  backgroundColor: colors.accent,
-                }
-              ]}
-            />
-          </View>
-        </View>
 
         <TasksList
           styles={styles}
           colors={colors}
-          dailyTasks={dailyTasks}
-          completedTasks={completedTasks}
+          dailyTasks={safeDailyTasks}
+          completedTasks={safeCompletedTasks}
           isDayCompleted={isDayCompleted}
           toggleTaskCompletion={toggleTaskCompletion}
+          onNavigateToHub={onNavigateToHub}
         />
 
-        {/* Day Completion Message */}
-        {isDayCompleted && (
-          <View style={[styles.completionMessage, { backgroundColor: colors.primary + '15' }]}>
-            <View style={styles.completionContent}>
-              <Text style={[styles.completionEmoji]}>🎉</Text>
-              <Text style={[styles.completionTitle, { color: colors.primary }]}>
-                Day {currentDay} Complete!
-              </Text>
-              <Text style={[styles.completionSubtitle, { color: colors.textSecondary }]}>
-                Great job! You've completed all {dailyTasks.length} tasks for today.
-              </Text>
-              <Text style={[styles.completionText, { color: colors.textSecondary }]}>
-                Come back tomorrow for Day {currentDay + 1} tasks!
-              </Text>
-            </View>
-          </View>
+        <DayCompletionMessage
+          styles={styles}
+          colors={colors}
+          isDayCompleted={isDayCompleted}
+          currentDay={currentDay}
+          taskCount={safeDailyTasks.length}
+        />
+
+        {/* Height Measurement Component */}
+        {userProfile && (
+          <HeightMeasurement
+            userId={userProfile.id}
+            onMeasurementAdded={() => {
+              // Refresh any relevant data when measurement is added
+              console.log('Height measurement added');
+            }}
+          />
         )}
-
-
-        {/* Weekly Summary removed */}
       </ScrollView>
 
 
@@ -695,7 +701,56 @@ export default function DailyRoutineScreen({ navigation, onNavigateToProfile }) 
         autoClose={true}
         autoCloseDelay={4000}
       />
-    </SafeAreaView>
+
+      {/* Confetti Animation */}
+      <ConfettiAnimation
+        visible={showConfetti}
+        onComplete={handleConfettiComplete}
+      />
+
+      {/* Streak Modal */}
+      <StreakModal
+        visible={isStreakModalVisible}
+        onClose={() => setStreakModalVisible(false)}
+        userProgress={userProgress || userProgressLocal}
+        freezeStatus={freezeStatus}
+        onUseFreeze={() => {
+          setStreakModalVisible(false);
+          setFreezeModalVisible(true);
+        }}
+      />
+
+      {/* Streak Freeze Modal */}
+      <StreakFreezeModal
+        visible={isFreezeModalVisible}
+        onClose={() => setFreezeModalVisible(false)}
+        previousStreak={freezeStatus.previousStreak}
+        onRestore={async () => {
+          if (userProfile?.id) {
+            const result = await StreakFreezeService.useStreakFreeze(userProfile.id);
+            if (result.success) {
+              if (fetchUserProfile) {
+                await fetchUserProfile(userProfile.id);
+              }
+              setFreezeModalVisible(false);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              Alert.alert(
+                '❄️ Streak Restored!',
+                `Your streak of ${result.restoredStreak} days has been restored! Keep up the amazing work! 🔥`
+              );
+            } else {
+              Alert.alert('Error', result.error || 'Failed to restore streak. Please try again.');
+            }
+          }
+        }}
+      />
+
+      {/* Seed Retention Modal */}
+      <SeedRetentionModal
+        visible={isSeedRetentionModalVisible}
+        onClose={() => setSeedRetentionModalVisible(false)}
+      />
+    </View>
   );
 }
 
@@ -708,7 +763,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100,
+    flexGrow: 0,
+    paddingBottom: 0,
   },
   loadingContainer: {
     flex: 1,
@@ -723,27 +779,46 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 50,
-    paddingBottom: 20,
+    paddingHorizontal: 17,
+    // Move header even higher on iOS while keeping Android spacing the same
+    paddingTop: Platform.OS === 'ios' ? 0 : 10,
+    paddingBottom: 12,
   },
   headerContent: {
     flex: 1,
   },
   title: {
-    fontSize: 28,
+    fontSize: 39,
     fontFamily: 'RobotoCondensed_700Bold',
+    fontWeight: 'bold',
   },
   subtitle: {
     fontSize: 14,
-    fontFamily: 'RobotoCondensed_400Regular',
-    marginTop: 2,
+    fontFamily: 'RobotoCondensed_600SemiBold',
+    marginTop: 4,
+    letterSpacing: 0.5,
+  },
+  dayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  phaseBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  phaseBadgeText: {
+    fontSize: 12,
+    fontFamily: 'RobotoCondensed_700Bold',
   },
   settingsButton: {
     padding: 8,
   },
   dateSelector: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 17,
     marginBottom: 24,
   },
   dateContainer: {
@@ -751,16 +826,22 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   dateButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    minWidth: 60,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    minWidth: 70,
     alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   dateText: {
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: 'RobotoCondensed_700Bold',
+    letterSpacing: 0.3,
   },
   planSection: {
     paddingHorizontal: 24,
@@ -841,8 +922,8 @@ const styles = StyleSheet.create({
     fontFamily: 'RobotoCondensed_600SemiBold',
   },
   streaksSection: {
-    paddingHorizontal: 24,
-    marginBottom: 24,
+    paddingHorizontal: 17,
+    marginBottom: 8,
   },
   streaksHeader: {
     flexDirection: 'row',
@@ -855,8 +936,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   streaksLabel: {
-    fontSize: 18,
+    fontSize: 19,
     fontFamily: 'RobotoCondensed_700Bold',
+    letterSpacing: 0.4,
   },
   streakBadge: {
     paddingHorizontal: 12,
@@ -866,6 +948,25 @@ const styles = StyleSheet.create({
   streakNumber: {
     fontSize: 16,
     fontFamily: 'RobotoCondensed_700Bold',
+  },
+  viewProgressButton: {
+    backgroundColor: '#000000',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginTop: 16,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  viewProgressButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'RobotoCondensed_700Bold',
+    letterSpacing: 0.5,
   },
   progressSection: {
     paddingHorizontal: 24,
@@ -895,13 +996,18 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   tasksSection: {
-    paddingHorizontal: 24,
-    gap: 12,
+    paddingHorizontal: 17,
+    gap: 10,
   },
   taskCard: {
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: 16,
+    borderWidth: 1.5,
     padding: 16,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   taskContent: {
     flexDirection: 'row',
@@ -913,20 +1019,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 2,
-    marginRight: 12,
+    marginRight: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
   taskEmoji: {
-    fontSize: 20,
+    fontSize: 18,
     marginRight: 12,
   },
   taskTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: 'RobotoCondensed_400Regular',
     flex: 1,
   },
@@ -935,15 +1041,19 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   specialTaskBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginTop: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    marginTop: 6,
     alignSelf: 'flex-start',
   },
   specialTaskBadgeText: {
-    fontSize: 10,
+    fontSize: 12,
     fontFamily: 'RobotoCondensed_600SemiBold',
+  },
+  infoButton: {
+    padding: 8,
+    marginLeft: 8,
   },
   fabButton: {
     position: 'absolute',
@@ -968,14 +1078,11 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 32,
     borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.15,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
     shadowRadius: 12,
-    elevation: 8,
+    elevation: 4,
   },
   completionContent: {
     padding: 24,

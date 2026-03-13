@@ -20,7 +20,7 @@ export const CATEGORIES = [
 // difficulty: 'Beginner' | 'Inter' | 'Advanced'
 // impact: 'Low' | 'Medium' | 'High'
 
-export const EXERCISES = [
+const EXERCISES_RAW = [
   {
     id: 'ex-001',
     name: 'Hanging Stretch',
@@ -306,20 +306,6 @@ export const EXERCISES = [
         description: 'Simple pelvic tilt with core engagement',
         steps: ['Lie on back with knees bent', 'Gently tuck pelvis to press low back to floor', 'Hold for 3-5 seconds', 'Release and repeat', 'Focus on core control']
       },
-      {
-        id: 'ex-005-2',
-        name: 'Pelvic Tilt Pulses',
-        duration: 45,
-        description: 'Small pulsing movements in pelvic tilt',
-        steps: ['Start in basic pelvic tilt', 'Add small pulsing movements', 'Keep core engaged throughout', 'Focus on lower back control', 'Continue for 45 seconds']
-      },
-      {
-        id: 'ex-005-3',
-        name: 'Pelvic Tilt Flow',
-        duration: 60,
-        description: 'Flowing pelvic tilts with breathing',
-        steps: ['Begin with basic tilt', 'Add breathing coordination', 'Flow between positions', 'Focus on core stability', 'Maintain smooth movement']
-      }
     ]
   },
   {
@@ -1389,115 +1375,7 @@ export const EXERCISES = [
       }
     ]
   },
-  {
-    id: 'ex-027',
-    name: 'Pelvic Tilt',
-    categoryId: 'pelvic-tilt',
-    durationMin: 5,
-    difficulty: 'Beginner',
-    impact: 'Medium',
-    icon: 'body',
-    shortDescription: 'Undo anterior pelvic tilt and an arched lower back with stretches that lengthen muscles in your lower back and hip flexors.',
-    benefits: ['Corrects pelvic alignment', 'Reduces lower back arch', 'Improves hip flexor flexibility', 'Better posture'],
-    targetMuscles: ['Lower back', 'Hip flexors', 'Glutes', 'Core'],
-    equipment: [],
-    steps: [
-      'Complete all 8 exercises in sequence',
-      'Focus on proper form and breathing',
-      'Hold each stretch for the specified duration',
-      'Rest 10 seconds between exercises'
-    ],
-    subExercises: [
-      {
-        id: 'ex-027-1',
-        name: 'Knees-to-chest',
-        duration: 30,
-        steps: [
-          'Lie on your back',
-          'Bring both knees to chest',
-          'Hug knees with arms',
-          'Hold for 30 seconds'
-        ]
-      },
-      {
-        id: 'ex-027-2',
-        name: 'Lying Quad Stretch',
-        duration: 60,
-        steps: [
-          'Lie on your side',
-          'Bend top leg and grab foot',
-          'Pull foot toward glutes',
-          'Hold for 30 seconds each side'
-        ]
-      },
-      {
-        id: 'ex-027-3',
-        name: 'Lunge',
-        duration: 30,
-        steps: [
-          'Step forward with one leg',
-          'Lower into lunge position',
-          'Keep front knee over ankle',
-          'Hold for 30 seconds each side'
-        ]
-      },
-      {
-        id: 'ex-027-4',
-        name: 'Cat Cow',
-        duration: 30,
-        steps: [
-          'Start on hands and knees',
-          'Arch back (cow pose)',
-          'Round spine (cat pose)',
-          'Continue for 30 seconds'
-        ]
-      },
-      {
-        id: 'ex-027-5',
-        name: 'Butterfly',
-        duration: 30,
-        steps: [
-          'Sit with soles of feet together',
-          'Knees bent out to sides',
-          'Gently press knees down',
-          'Hold stretch for 30 seconds'
-        ]
-      },
-      {
-        id: 'ex-027-6',
-        name: 'Lying Figure Four',
-        duration: 60,
-        steps: [
-          'Lie on your back',
-          'Cross one ankle over opposite knee',
-          'Pull knee toward chest',
-          'Hold for 30 seconds each side'
-        ]
-      },
-      {
-        id: 'ex-027-7',
-        name: 'Pelvic Tilt Press',
-        duration: 15,
-        steps: [
-          'Lie on back with knees bent',
-          'Flatten lower back to floor',
-          'Press pelvis up slightly',
-          'Hold for 15 seconds'
-        ]
-      },
-      {
-        id: 'ex-027-8',
-        name: 'Bridge',
-        duration: 15,
-        steps: [
-          'Lie on back with knees bent',
-          'Lift hips up into bridge',
-          'Keep core engaged',
-          'Hold for 15 seconds'
-        ]
-      }
-    ]
-  },
+
   {
     id: 'ex-028',
     name: 'Upper Body 3',
@@ -1625,7 +1503,7 @@ export const EXERCISES = [
     id: 'ex-032',
     name: 'Chest Supported Row (Band)',
     categoryId: 'upper-body',
-    durationMin: 8,
+    durationMin: 5, // 90+30+90+30+90 = 330s = 5.5min, rounded to 5min
     difficulty: 'Beginner',
     impact: 'Medium',
     icon: 'fitness',
@@ -1633,7 +1511,54 @@ export const EXERCISES = [
     benefits: ['Back strength', 'Shoulder balance'],
     targetMuscles: ['Lats', 'Rhomboids'],
     equipment: ['Band'],
-    steps: ['Anchor band', 'Row elbows back', '12 reps x 3'],
+    steps: [
+      'Complete all 3 sets in sequence',
+      'Focus on proper form and controlled movement',
+      'Rest 30 seconds between sets'
+    ],
+    subExercises: [
+      {
+        id: 'ex-032-1',
+        name: 'Set 1: Chest Supported Row',
+        duration: 90,
+        description: 'First set of band rows',
+        steps: [
+          'Anchor band at chest height',
+          'Lie face down on bench or support chest',
+          'Grip band handles with palms facing each other',
+          'Row elbows back, squeezing shoulder blades',
+          'Control the return to start position',
+          'Complete 12 reps'
+        ]
+      },
+      {
+        id: 'ex-032-2',
+        name: 'Set 2: Chest Supported Row',
+        duration: 90,
+        description: 'Second set of band rows',
+        steps: [
+          'Maintain same position and form',
+          'Focus on full range of motion',
+          'Keep core engaged throughout',
+          'Row elbows back, squeezing shoulder blades',
+          'Control the return to start position',
+          'Complete 12 reps'
+        ]
+      },
+      {
+        id: 'ex-032-3',
+        name: 'Set 3: Chest Supported Row',
+        duration: 90,
+        description: 'Final set of band rows',
+        steps: [
+          'Maintain proper form for final set',
+          'Focus on quality over speed',
+          'Squeeze shoulder blades at the top',
+          'Control the return to start position',
+          'Complete 12 reps'
+        ]
+      }
+    ]
   },
   {
     id: 'ex-034',
@@ -1681,7 +1606,7 @@ export const EXERCISES = [
     id: 'ex-039',
     name: 'Scap Push-Ups',
     categoryId: 'upper-body',
-    durationMin: 6,
+    durationMin: 4, // 60+30+60+30+60 = 240s = 4min
     difficulty: 'Beginner',
     impact: 'Medium',
     icon: 'body',
@@ -1689,7 +1614,56 @@ export const EXERCISES = [
     benefits: ['Serratus activation', 'Better push-up form'],
     targetMuscles: ['Serratus', 'Traps'],
     equipment: [],
-    steps: ['Plank position', 'Push floor away / let chest sink', '10–12 reps'],
+    steps: [
+      'Complete all 3 sets in sequence',
+      'Focus on shoulder blade movement only',
+      'Keep arms straight throughout',
+      'Rest 30 seconds between sets'
+    ],
+    subExercises: [
+      {
+        id: 'ex-039-1',
+        name: 'Set 1: Scap Push-Ups',
+        duration: 60,
+        description: 'First set focusing on protraction and retraction',
+        steps: [
+          'Start in plank position',
+          'Keep arms straight and body in line',
+          'Push floor away by protracting shoulder blades',
+          'Let chest sink by retracting shoulder blades',
+          'Focus on smooth, controlled movement',
+          'Complete 10-12 reps'
+        ]
+      },
+      {
+        id: 'ex-039-2',
+        name: 'Set 2: Scap Push-Ups',
+        duration: 60,
+        description: 'Second set with increased focus on form',
+        steps: [
+          'Maintain plank position',
+          'Keep core engaged and body straight',
+          'Push floor away by protracting shoulder blades',
+          'Let chest sink by retracting shoulder blades',
+          'Focus on full range of motion',
+          'Complete 10-12 reps'
+        ]
+      },
+      {
+        id: 'ex-039-3',
+        name: 'Set 3: Scap Push-Ups',
+        duration: 60,
+        description: 'Final set maintaining proper technique',
+        steps: [
+          'Maintain proper plank position',
+          'Keep arms straight throughout',
+          'Push floor away by protracting shoulder blades',
+          'Let chest sink by retracting shoulder blades',
+          'Focus on serratus activation',
+          'Complete 10-12 reps'
+        ]
+      }
+    ]
   },
   // Additional Masai Jump exercises
   {
@@ -3121,7 +3095,7 @@ export const EXERCISES = [
       },
       {
         id: 'ex-053-7',
-        name: 'Leaning Calf',
+        name: 'Learning Calf Raises',
         duration: 60,
         steps: [
           'Stand facing wall',
@@ -3187,7 +3161,306 @@ export const EXERCISES = [
       }
     ]
   },
+  {
+    id: 'ex-054',
+    name: 'Martial Arts Training',
+    categoryId: 'strength',
+    durationMin: 20,
+    difficulty: 'Inter',
+    impact: 'High',
+    isHighestImpact: true,
+    icon: 'fitness',
+    shortDescription: 'Comprehensive martial arts movements that trigger maximum HGH release through intense full-body engagement.',
+    benefits: [
+      'Maximum HGH release through intense exertion',
+      'Full-body strength and coordination',
+      'Improved flexibility and agility',
+      'Enhanced bone density and posture',
+    ],
+    targetMuscles: ['Full Body', 'Core', 'Legs', 'Shoulders'],
+    equipment: ['Open space', 'Comfortable clothing'],
+    bestTime: 'Morning (6-8 AM) or Evening (5-7 PM)',
+    timingNote: 'Perform 2-3 times per week on non-consecutive days for optimal HGH response',
+    steps: [
+      'Start with 5 minutes of warm-up (light jogging, arm circles)',
+      'Perform basic strikes (punches, kicks) for 10 minutes',
+      'Include stance work and forms for 5 minutes',
+      'Cool down with stretching for 5 minutes',
+    ],
+    subExercises: [
+      {
+        id: 'ex-054-1',
+        name: 'Basic Strikes Warm-up',
+        duration: 300,
+        description: 'Warm-up with fundamental striking movements',
+        steps: [
+          'Stand in fighting stance',
+          'Practice straight punches (jabs and crosses)',
+          'Add front kicks and side kicks',
+          'Focus on proper form and breathing',
+          'Continue for 5 minutes'
+        ]
+      },
+      {
+        id: 'ex-054-2',
+        name: 'Kata/Forms Practice',
+        duration: 600,
+        description: 'Traditional martial arts forms for full-body engagement',
+        steps: [
+          'Start in ready position',
+          'Execute a sequence of strikes, blocks, and kicks',
+          'Maintain proper breathing throughout',
+          'Focus on precision and power',
+          'Repeat sequence 3-5 times',
+          'Perform for 10 minutes total'
+        ]
+      },
+      {
+        id: 'ex-054-3',
+        name: 'Conditioning & Cool Down',
+        duration: 300,
+        description: 'Strength conditioning followed by stretching',
+        steps: [
+          'Perform push-ups, squats, and core work (2 minutes)',
+          'Static stretches for legs, hips, and shoulders',
+          'Deep breathing exercises',
+          'Hold stretches for 30-45 seconds each',
+          'Complete in 5 minutes'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'ex-055',
+    name: 'High-Intensity Sprinting',
+    categoryId: 'strength',
+    durationMin: 15,
+    difficulty: 'Advanced',
+    impact: 'High',
+    isHighestImpact: true,
+    icon: 'flash',
+    shortDescription: 'Explosive sprint intervals that maximize HGH production through anaerobic intensity.',
+    benefits: [
+      'Peak HGH release (up to 450% increase)',
+      'Enhanced growth hormone production',
+      'Improved cardiovascular fitness',
+      'Increased bone density and leg strength',
+    ],
+    targetMuscles: ['Legs', 'Glutes', 'Core', 'Calves'],
+    equipment: ['Track, field, or safe open space'],
+    bestTime: 'Morning (6-8 AM) - Optimal for HGH release',
+    timingNote: 'Perform 3-4 times per week with 48 hours rest between sessions',
+    steps: [
+      'Warm up with 5 minutes of light jogging and dynamic stretches',
+      'Perform 6-8 sprint intervals: 30 seconds sprint, 90 seconds rest',
+      'Cool down with 5 minutes of walking and static stretches',
+    ],
+    subExercises: [
+      {
+        id: 'ex-055-1',
+        name: 'Dynamic Warm-up',
+        duration: 300,
+        description: 'Prepare your body for explosive sprints',
+        steps: [
+          'Light jog for 2 minutes',
+          'Leg swings forward and backward (30 seconds)',
+          'Walking lunges (30 seconds)',
+          'High knees (30 seconds)',
+          'Butt kicks (30 seconds)',
+          'Complete in 5 minutes'
+        ]
+      },
+      {
+        id: 'ex-055-2',
+        name: 'Sprint Intervals',
+        duration: 480,
+        description: 'Maximum intensity sprints for HGH release',
+        steps: [
+          'Sprint at 80-90% max speed for 30 seconds',
+          'Walk or light jog for 90 seconds rest',
+          'Repeat 6-8 times',
+          'Focus on explosive power and full leg extension',
+          'Maintain proper running form',
+          'Total time: 8 minutes'
+        ]
+      },
+      {
+        id: 'ex-055-3',
+        name: 'Recovery & Stretch',
+        duration: 300,
+        description: 'Cool down and muscle recovery',
+        steps: [
+          'Walk for 2 minutes to lower heart rate',
+          'Stretch hamstrings, quads, calves, and hip flexors',
+          'Hold each stretch for 30-45 seconds',
+          'Deep breathing to aid recovery',
+          'Complete in 5 minutes'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'ex-056',
+    name: 'Swimming Intervals',
+    categoryId: 'strength',
+    durationMin: 25,
+    difficulty: 'Inter',
+    impact: 'High',
+    isHighestImpact: true,
+    icon: 'water',
+    shortDescription: 'Full-body swimming that decompresses the spine while triggering significant HGH release.',
+    benefits: [
+      'Spinal decompression in water',
+      'High HGH release from full-body exertion',
+      'Zero-impact on joints',
+      'Improved posture and flexibility',
+    ],
+    targetMuscles: ['Full Body', 'Shoulders', 'Back', 'Core', 'Legs'],
+    equipment: ['Pool access', 'Swimsuit', 'Goggles (optional)'],
+    bestTime: 'Morning (6-8 AM) or Evening (5-7 PM)',
+    timingNote: 'Perform 3-4 times per week for optimal results',
+    steps: [
+      'Warm up with 5 minutes of easy swimming',
+      'Perform 4-6 high-intensity intervals: 2 minutes hard, 1 minute rest',
+      'Cool down with 5 minutes of easy swimming and stretches',
+    ],
+    subExercises: [
+      {
+        id: 'ex-056-1',
+        name: 'Swimming Warm-up',
+        duration: 300,
+        description: 'Gentle swimming to prepare muscles',
+        steps: [
+          'Swim easy freestyle for 2 minutes',
+          'Add gentle backstroke for 2 minutes',
+          'Light stretching in water (arm circles, leg swings)',
+          'Focus on smooth, relaxed movements',
+          'Complete in 5 minutes'
+        ]
+      },
+      {
+        id: 'ex-056-2',
+        name: 'Interval Training',
+        duration: 900,
+        description: 'High-intensity swimming intervals',
+        steps: [
+          'Swim freestyle at 80% effort for 2 minutes',
+          'Rest for 1 minute (tread water or hold pool edge)',
+          'Repeat 4-6 times',
+          'Focus on powerful strokes and proper breathing',
+          'Use different strokes (freestyle, backstroke, breaststroke)',
+          'Total time: 15 minutes'
+        ]
+      },
+      {
+        id: 'ex-056-3',
+        name: 'Cool Down & Stretch',
+        duration: 300,
+        description: 'Relaxed swimming and stretching',
+        steps: [
+          'Swim easy for 2 minutes',
+          'Perform stretches in shallow end or poolside',
+          'Stretch shoulders, back, and legs',
+          'Hold each stretch for 30-45 seconds',
+          'Complete in 5 minutes'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'ex-057',
+    name: 'Wood Cutting',
+    categoryId: 'strength',
+    durationMin: 20,
+    difficulty: 'Inter',
+    impact: 'High',
+    isHighestImpact: true,
+    icon: 'hammer',
+    shortDescription: 'Functional full-body exercise that combines rotational power with upper body strength for maximum HGH stimulation.',
+    benefits: [
+      'Functional full-body strength',
+      'Rotational power and core engagement',
+      'High HGH release from compound movements',
+      'Improved grip strength and posture',
+    ],
+    targetMuscles: ['Full Body', 'Core', 'Shoulders', 'Back', 'Legs'],
+    equipment: ['Axe or splitting maul', 'Chopping block', 'Safety gear'],
+    bestTime: 'Morning (7-9 AM) - Natural outdoor activity time',
+    timingNote: 'Perform 2-3 times per week, alternate with other high-impact exercises',
+    steps: [
+      'Warm up with 5 minutes of light stretching and arm circles',
+      'Practice proper form: 10-15 minutes of controlled chopping',
+      'Cool down with 5 minutes of stretching',
+    ],
+    subExercises: [
+      {
+        id: 'ex-057-1',
+        name: 'Safety & Warm-up',
+        duration: 300,
+        description: 'Proper setup and preparation',
+        steps: [
+          'Ensure clear workspace and stable chopping block',
+          'Wear safety glasses and proper footwear',
+          'Light stretching: arm circles, torso twists, leg swings',
+          'Practice safe grip and stance',
+          'Complete in 5 minutes'
+        ]
+      },
+      {
+        id: 'ex-057-2',
+        name: 'Chopping Technique',
+        duration: 900,
+        description: 'Proper wood cutting form and power',
+        steps: [
+          'Stand with feet shoulder-width apart, log centered',
+          'Raise axe overhead with both hands',
+          'Engage core and rotate torso on downswing',
+          'Aim for center of log, let weight do the work',
+          'Follow through completely',
+          'Rest 30 seconds between logs',
+          'Continue for 10-15 minutes'
+        ]
+      },
+      {
+        id: 'ex-057-3',
+        name: 'Cool Down & Recovery',
+        duration: 300,
+        description: 'Stretching and recovery',
+        steps: [
+          'Stretch shoulders and upper back',
+          'Torso twists to release rotation',
+          'Hamstring and hip flexor stretches',
+          'Hold each stretch for 30-45 seconds',
+          'Deep breathing for recovery',
+          'Complete in 5 minutes'
+        ]
+      }
+    ]
+  },
 ];
+
+// Hard-remove specific exercises by name (case-insensitive) from dataset
+const HIDDEN_EXERCISE_NAMES = new Set([
+  'pelvic tilt flow',
+  'pelvic tilt pulses',
+  'scalene stretch',
+  'neck rotation',
+  'scapula stretch',
+  'lateral foot rocks',
+  'toe stretch',
+  'wall pecs',
+  'reverse lunge',
+  'seated fold',
+].map(n => n.toLowerCase()));
+
+export const EXERCISES = EXERCISES_RAW
+  .map(e => ({
+    ...e,
+    subExercises: Array.isArray(e.subExercises)
+      ? e.subExercises.filter(se => !HIDDEN_EXERCISE_NAMES.has(String(se?.name || '').toLowerCase()))
+      : e.subExercises,
+  }))
+  .filter(e => !HIDDEN_EXERCISE_NAMES.has(String(e?.name || '').toLowerCase()));
 
 // Nutrition data for supplements and other categories
 export const NUTRITION_CATEGORIES = [

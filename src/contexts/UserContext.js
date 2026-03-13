@@ -135,11 +135,29 @@ export const UserProvider = ({ children }) => {
 
   // Helper functions for user data
   const getUserDisplayName = () => {
-    // Use first name if available, otherwise fall back to display_name or email prefix
+    // Use first name if available
     if (userProfile?.first_name) {
       return userProfile.first_name;
     }
-    return userProfile?.display_name || user?.email?.split('@')[0] || 'User';
+
+    // For Apple Sign-In users, extract first name from display_name or full name
+    if (userProfile?.display_name) {
+      const fullName = userProfile.display_name;
+      const nameParts = fullName.trim().split(' ');
+      if (nameParts.length > 0) {
+        return nameParts[0]; // Return first name
+      }
+    }
+
+    // Fall back to extracting name from email (for Apple Sign-In users)
+    if (user?.email) {
+      const emailPrefix = user.email.split('@')[0];
+      // Capitalize first letter and make it look like a name
+      return emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1).toLowerCase();
+    }
+
+    // Fall back to a friendly name for users without names
+    return 'Height Seeker';
   };
 
   const getCurrentHeight = () => {

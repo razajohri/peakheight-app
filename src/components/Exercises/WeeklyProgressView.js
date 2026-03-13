@@ -3,19 +3,19 @@ import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
   ScrollView,
   Dimensions,
   RefreshControl,
+  StyleSheet,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import Icon from '../UI/Icon';
 import { useUser } from '../../contexts/UserContext';
 import { CustomExercisePlanService } from '../../services/customExercisePlanService';
 import * as Haptics from 'expo-haptics';
 
 const { width } = Dimensions.get('window');
 
-const WeeklyProgressView = ({ onExerciseSelect }) => {
+const WeeklyProgressView = ({ styles, onExerciseSelect, onTodayListUpdate, completedExercises = new Set() }) => {
   const { userProfile, userProgress } = useUser();
   const [todayExercises, setTodayExercises] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,6 +51,9 @@ const WeeklyProgressView = ({ onExerciseSelect }) => {
       );
 
       setTodayExercises(exercises);
+      if (typeof onTodayListUpdate === 'function') {
+        onTodayListUpdate(exercises);
+      }
     } catch (error) {
       console.error('Error loading today exercises:', error);
     } finally {
@@ -134,7 +137,7 @@ const WeeklyProgressView = ({ onExerciseSelect }) => {
         </View>
         {completed && (
           <View style={styles.completionBadge}>
-            <Icon name="medal" size={16} color="#FFD700" />
+            <Icon name="checkmark-circle" size={16} color="#10B981" />
           </View>
         )}
       </View>
@@ -147,7 +150,7 @@ const WeeklyProgressView = ({ onExerciseSelect }) => {
     const isCurrentWeek = weekNumber === currentWeek;
 
     return (
-      <View key={weekNumber} style={styles.weekContainer}>
+      <View key={weekNumber} style={[styles.weekContainer, weekNumber === 1 && { marginTop: 12 }]}>
         <View style={styles.weekHeader}>
           <View style={styles.weekTitleContainer}>
             <View style={[
@@ -190,29 +193,57 @@ const WeeklyProgressView = ({ onExerciseSelect }) => {
           {isCurrentWeek && !locked && (
             <View style={styles.todayExercisesContainer}>
               <Text style={styles.todayExercisesTitle}>Today's Exercises</Text>
-              {todayExercises.map((exercise, index) => (
+              {todayExercises.map((exercise, index) => {
+                const displayName = exercise.subExercise?.name || exercise.name;
+                const displayDuration = exercise.subExercise?.duration || exercise.durationMin || exercise.subExercise?.durationMin || 0;
+
+                // Check if this exercise is completed
+                const exerciseId = exercise.parentExercise?.id || exercise.id;
+                const subExerciseId = exercise.subExercise?.id || null;
+                const key = subExerciseId ? `${exerciseId}-${subExerciseId}` : exerciseId;
+                const isCompleted = completedExercises.has(key);
+
+                return (
                 <TouchableOpacity
                   key={exercise.id}
-                  style={styles.exerciseCard}
+                  style={[styles.dailyExerciseCard, isCompleted && styles.dailyExerciseCardCompleted]}
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    onExerciseSelect(exercise);
+                    onExerciseSelect(
+                      exercise.parentExercise || exercise,
+                      exercise.subExercise || null,
+                      index
+                    );
                   }}
                 >
-                  <View style={styles.exerciseContent}>
-                    <View style={styles.exerciseInfo}>
-                      <Text style={styles.exerciseNumber}>{index + 1}</Text>
-                      <View style={styles.exerciseDetails}>
-                        <Text style={styles.exerciseName}>{exercise.name}</Text>
-                        <Text style={styles.exerciseMeta}>
-                          {exercise.durationMin} min • {exercise.difficulty}
+                  <View style={styles.dailyExerciseContent}>
+                    <View style={styles.dailyExerciseInfo}>
+                      <View style={styles.dailyExerciseNumberContainer}>
+                        {isCompleted ? (
+                          <Icon name="checkmark-circle" size={20} color="#10B981" />
+                        ) : (
+                          <Text style={styles.dailyExerciseNumber}>{index + 1}</Text>
+                        )}
+                      </View>
+                      <View style={styles.dailyExerciseDetails}>
+                        <Text style={[styles.dailyExerciseName, isCompleted && styles.dailyExerciseNameCompleted]}>
+                          {displayName}
+                        </Text>
+                        <Text style={styles.dailyExerciseMeta}>
+                          {displayDuration >= 60
+                            ? (displayDuration >= 90
+                                ? `${Math.round(displayDuration / 60)} min`
+                                : `1 min`)
+                            : `${Math.max(1, Math.round(displayDuration))} sec`
+                          } • {exercise.difficulty}
                         </Text>
                       </View>
                     </View>
                     <Icon name="chevron-forward" size={20} color="#666666" />
                   </View>
                 </TouchableOpacity>
-              ))}
+                );
+              })}
             </View>
           )}
         </View>
@@ -257,182 +288,189 @@ const WeeklyProgressView = ({ onExerciseSelect }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+
+export default WeeklyProgressView;
+
+const localStyles = StyleSheet.create({
+  weekCard: {
     backgroundColor: '#FFFFFF',
-  },
-  scrollContent: {
-    paddingTop: 20,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#666666',
-  },
-  weekContainer: {
-    marginBottom: 24,
-    paddingHorizontal: 20,
-  },
-  weekHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  weekTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  weekIcon: {
-    width: 32,
-    height: 32,
     borderRadius: 16,
-    backgroundColor: '#F0F0F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  weekIconLocked: {
-    backgroundColor: '#F5F5F5',
-  },
-  weekTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000000',
-  },
-  weekTitleLocked: {
-    color: '#999999',
-  },
-  weekContent: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
+    marginHorizontal: 16,
+    marginVertical: 8,
     padding: 16,
-    marginLeft: 16,
-  },
-  weekContentLocked: {
-    backgroundColor: '#F5F5F5',
-    opacity: 0.6,
-  },
-  daysContainer: {
-    gap: 8,
-  },
-  dayRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  dayContainer: {
-    alignItems: 'center',
-    position: 'relative',
-  },
-  dayCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#E0E0E0',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  dayCircleCompleted: {
-    backgroundColor: '#4CD964',
-    borderColor: '#4CD964',
-  },
-  dayCircleCurrent: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#FF6B35',
-    borderStyle: 'dashed',
-  },
-  dayCircleLocked: {
-    backgroundColor: '#F5F5F5',
-    borderColor: '#E0E0E0',
-  },
-  dayNumber: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000000',
-  },
-  dayNumberCompleted: {
-    color: '#FFFFFF',
-  },
-  dayNumberCurrent: {
-    color: '#FF6B35',
-  },
-  dayNumberLocked: {
-    color: '#999999',
-  },
-  completionBadge: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 2,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+  },
+  weekHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  weekTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#000000',
+  },
+  currentWeekBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#3B5FE3',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  currentWeekText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  completedWeekBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  completedWeekText: {
+    color: '#10B981',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  lockedWeekBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  lockedWeekText: {
+    color: '#9CA3AF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  weekProgressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  weekProgressBar: {
+    width: 60,
+    height: 6,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  weekProgressFill: {
+    height: '100%',
+    backgroundColor: '#10B981',
+    borderRadius: 3,
+  },
+  weekProgressText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#374151',
+    minWidth: 30,
   },
   todayExercisesContainer: {
     marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
+  },
+  todayExercisesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   todayExercisesTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#000000',
-    marginBottom: 12,
+  },
+  exerciseCountBadge: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  exerciseCountText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#374151',
   },
   exerciseCard: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    marginVertical: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+  },
+  exerciseNumberContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  exerciseContent: {
-    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  exerciseInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
   },
   exerciseNumber: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#4CD964',
-    marginRight: 12,
-    minWidth: 20,
-  },
-  exerciseDetails: {
-    flex: 1,
+    fontWeight: '700',
+    color: '#374151',
   },
   exerciseName: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#000000',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   exerciseMeta: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  durationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    gap: 4,
+  },
+  durationText: {
     fontSize: 12,
-    color: '#666666',
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  difficultyBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  difficultyBeginner: {
+    backgroundColor: '#DCFCE7',
+  },
+  difficultyIntermediate: {
+    backgroundColor: '#FEF3C7',
+  },
+  difficultyAdvanced: {
+    backgroundColor: '#FEE2E2',
+  },
+  difficultyText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'capitalize',
   },
 });
 
-export default WeeklyProgressView;

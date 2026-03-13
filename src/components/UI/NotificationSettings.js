@@ -8,7 +8,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import Icon from '../UI/Icon';
 import NotificationService from '../../services/notificationService';
 import { useUser } from '../../contexts/UserContext';
 
@@ -382,3 +382,4 @@ const styles = StyleSheet.create({
 });
 
 export default NotificationSettings;
+

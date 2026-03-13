@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { FlatList, RefreshControl } from 'react-native';
 import PostCard from './PostCard';
 import { LoadingState, ErrorState, EmptyState } from './EmptyStates';
@@ -15,15 +15,26 @@ export default function PostList({
   onLike,
   onSave,
   onComment,
+  onViewComments,
   onMore,
   onShare
 }) {
-  const renderPostItem = ({ item }) => (
+  // Just render posts in a clean vertical list (join events are shown in a separate carousel)
+  const combinedItems = useMemo(() => {
+    return (posts || []).map(post => ({
+      type: 'post',
+      id: `post-${post.id}`,
+      data: post,
+    }));
+  }, [posts]);
+
+  const renderItem = ({ item }) => (
     <PostCard
-      item={item}
+      item={item.data}
       onLike={onLike}
       onSave={onSave}
       onComment={onComment}
+      onViewComments={onViewComments}
       onMore={onMore}
       onShare={onShare}
     />
@@ -32,16 +43,16 @@ export default function PostList({
   const renderEmptyState = () => {
     if (loading) return <LoadingState />;
     if (error) return <ErrorState error={error} onRetry={onRefresh} />;
-    if (posts.length === 0) return <EmptyState onCreatePost={() => {}} />;
+    if (combinedItems.length === 0) return <EmptyState onCreatePost={() => {}} />;
     return null;
   };
 
   return (
     <FlatList
       ref={flatListRef}
-      data={posts}
+      data={combinedItems}
       keyExtractor={(item) => item.id}
-      renderItem={renderPostItem}
+      renderItem={renderItem}
       contentContainerStyle={[styles.postList, { paddingBottom: screenHeight > 800 ? 120 : screenHeight > 650 ? 80 : 40 }]}
       showsVerticalScrollIndicator={false}
       ListEmptyComponent={renderEmptyState}

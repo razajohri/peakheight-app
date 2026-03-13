@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import Icon from '../UI/Icon';
 
 export default function TopExerciseOptions({ styles, onPressToday, onOpenCategory, HapticFeedback }) {
   return (
@@ -9,9 +9,9 @@ export default function TopExerciseOptions({ styles, onPressToday, onOpenCategor
       <View style={styles.topOptionsGrid}>
         {[
           { id: 'today', name: 'Today', icon: 'calendar', isSpecial: true },
-          { id: 'beginner', name: 'Beginner', icon: 'play-circle' },
-          { id: 'intermediate', name: 'Intermediate', icon: 'trending-up' },
-          { id: 'advanced', name: 'Advanced', icon: 'trophy' },
+          { id: 'stretches', name: 'Stretches', icon: 'body' },
+          { id: 'exercises', name: 'Exercises', icon: 'fitness' },
+          { id: 'high-hgh-impact', name: 'High HGH Impact', icon: 'flash' },
         ].map(option => (
           <TouchableOpacity
             key={option.id}
@@ -44,3 +44,4 @@ export default function TopExerciseOptions({ styles, onPressToday, onOpenCategor
     </View>
   );
 }
+

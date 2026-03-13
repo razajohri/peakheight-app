@@ -1,12 +1,33 @@
 // Onboarding8.js (Page 8 - What is your foot size?)
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import FloatingStars from '../../components/UI/FloatingStars';
+import ProgressHeader from '../../components/onboarding/ProgressHeader';
+import OnboardingButton from '../../components/onboarding/OnboardingButton';
+import HapticFeedback from '../../utils/hapticFeedback';
 import Slider from '@react-native-community/slider';
+import { Ionicons } from '@expo/vector-icons';
+import { 
+  ONBOARDING_TYPOGRAPHY, 
+  ONBOARDING_SPACING,
+  ONBOARDING_COLORS,
+  ONBOARDING_BORDER_RADIUS 
+} from '../../utils/onboardingConstants';
 
 const Onboarding8 = ({ navigation, data, updateData }) => {
   const [sizeSystem, setSizeSystem] = useState(data.footSizeSystem || 'us'); // 'us', 'eu', or 'uk'
-  const [footSize, setFootSize] = useState(data.footSize || 0); // Default to 0
+  const [footSize, setFootSize] = useState(data.footSize || 8); // Default to 8 (US size)
+  
+  // Initialize default value if not set
+  useEffect(() => {
+    if (!data.footSize || data.footSize === 0) {
+      updateData({
+        footSize: 8,
+        footSizeSystem: 'us'
+      });
+    }
+  }, []);
 
   const updateFootSize = (newSize, newSystem) => {
     updateData({
@@ -32,23 +53,28 @@ const Onboarding8 = ({ navigation, data, updateData }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: '53%' }]} />
-        </View>
-        <Text style={styles.progressText}>8/15</Text>
-      </View>
+      <FloatingStars />
+      <ProgressHeader 
+        currentStep={10} 
+        onBack={() => navigation.goBack()} 
+      />
 
       <View style={styles.contentContainer}>
-        <Text style={styles.title}>What is your foot size?</Text>
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>What is your foot size?</Text>
+          <Text style={styles.subtitle}>This helps us track your growth progress</Text>
+        </View>
 
-        <View style={styles.segmentContainer}>
+        <View
+          style={styles.segmentContainer}
+        >
           <TouchableOpacity
             style={[
               styles.segmentButton,
               sizeSystem === 'us' && styles.segmentButtonActive
             ]}
             onPress={() => {
+              HapticFeedback.selection();
               setSizeSystem('us');
               setFootSize(9); // Reset to default US size
               updateFootSize(9, 'us');
@@ -66,6 +92,7 @@ const Onboarding8 = ({ navigation, data, updateData }) => {
               sizeSystem === 'eu' && styles.segmentButtonActive
             ]}
             onPress={() => {
+              HapticFeedback.selection();
               setSizeSystem('eu');
               setFootSize(42); // Reset to default EU size
               updateFootSize(42, 'eu');
@@ -83,6 +110,7 @@ const Onboarding8 = ({ navigation, data, updateData }) => {
               sizeSystem === 'uk' && styles.segmentButtonActive
             ]}
             onPress={() => {
+              HapticFeedback.selection();
               setSizeSystem('uk');
               setFootSize(8); // Reset to default UK size
               updateFootSize(8, 'uk');
@@ -95,12 +123,16 @@ const Onboarding8 = ({ navigation, data, updateData }) => {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.sizeContainer}>
+        <View
+          style={styles.sizeContainer}
+        >
           <Text style={styles.sizeValue}>{footSize}</Text>
           <Text style={styles.sizeLabel}>{sizeSystem.toUpperCase()}</Text>
         </View>
 
-        <View style={styles.sliderContainer}>
+        <View
+          style={styles.sliderContainer}
+        >
           <Slider
             style={styles.slider}
             minimumValue={min}
@@ -128,12 +160,20 @@ const Onboarding8 = ({ navigation, data, updateData }) => {
       </View>
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => navigation.navigate('Onboarding9')}
-        >
-          <Text style={styles.buttonText}>Continue</Text>
-        </TouchableOpacity>
+        <OnboardingButton
+          title="Continue"
+          onPress={() => {
+            if (!footSize || footSize === 0) {
+              Alert.alert(
+                'Foot Size Required',
+                'Please select your foot size to continue.',
+                [{ text: 'OK', style: 'default' }]
+              );
+              return;
+            }
+            navigation.navigate('Onboarding9');
+          }}
+        />
       </View>
     </SafeAreaView>
   );
@@ -142,84 +182,67 @@ const Onboarding8 = ({ navigation, data, updateData }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 4,
-    marginBottom: 24,
-  },
-  progressBar: {
-    flex: 1,
-    height: 4,
-    backgroundColor: '#1f1f1f',
-    borderRadius: 2,
-    marginRight: 12,
-  },
-  progressFill: {
-    height: 4,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 2,
-  },
-  progressText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: '#9CA3AF',
+    backgroundColor: ONBOARDING_COLORS.BACKGROUND,
   },
   contentContainer: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: ONBOARDING_SPACING.PAGE_HORIZONTAL,
+    paddingTop: ONBOARDING_SPACING.PAGE_VERTICAL,
+  },
+  titleContainer: {
+    marginBottom: ONBOARDING_SPACING.SECTION_GAP,
   },
   title: {
-    fontFamily: 'Inter-Bold',
+    ...ONBOARDING_TYPOGRAPHY.PAGE_TITLE,
     fontSize: 28,
-    color: '#FFFFFF',
-    marginBottom: 24,
-    letterSpacing: -0.5,
+    marginBottom: ONBOARDING_SPACING.SM,
+    textAlign: 'center',
+  },
+  subtitle: {
+    ...ONBOARDING_TYPOGRAPHY.SUBTITLE,
+    textAlign: 'center',
+    marginBottom: ONBOARDING_SPACING.LG,
   },
   segmentContainer: {
     flexDirection: 'row',
-    marginBottom: 32,
-    borderRadius: 12,
+    marginBottom: ONBOARDING_SPACING.SECTION_GAP,
+    borderRadius: ONBOARDING_BORDER_RADIUS.MD,
     borderWidth: 1,
-    borderColor: '#1f1f1f',
+    borderColor: ONBOARDING_COLORS.BORDER,
     overflow: 'hidden',
   },
   segmentButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: ONBOARDING_SPACING.SM + 4,
     alignItems: 'center',
   },
   segmentButtonActive: {
-    backgroundColor: '#111111',
+    backgroundColor: ONBOARDING_COLORS.SURFACE_ELEVATED,
   },
   segmentButtonText: {
-    fontFamily: 'Inter-Medium',
+    ...ONBOARDING_TYPOGRAPHY.BODY,
     fontSize: 16,
-    color: '#FFFFFF',
   },
   segmentButtonTextActive: {
     fontWeight: '600',
   },
   sizeContainer: {
     alignItems: 'center',
+    marginTop: 30,
     marginBottom: 40,
   },
   sizeValue: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 48,
-    color: '#FFFFFF',
+    ...ONBOARDING_TYPOGRAPHY.PAGE_TITLE,
+    fontSize: 40,
+    fontWeight: 'bold',
   },
   sizeLabel: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 16,
-    color: '#9CA3AF',
-    marginTop: 8,
+    ...ONBOARDING_TYPOGRAPHY.SUBTITLE,
+    fontSize: 12,
+    marginTop: ONBOARDING_SPACING.SM,
   },
   sliderContainer: {
-    marginBottom: 32,
+    marginBottom: ONBOARDING_SPACING.SECTION_GAP,
   },
   slider: {
     width: '100%',
@@ -228,47 +251,28 @@ const styles = StyleSheet.create({
   sliderLabelsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 8,
+    marginTop: ONBOARDING_SPACING.SM,
   },
   sliderLabel: {
-    fontFamily: 'Inter-Regular',
+    ...ONBOARDING_TYPOGRAPHY.SUBTITLE,
     fontSize: 14,
-    color: '#9CA3AF',
   },
   confidenceTag: {
     alignSelf: 'flex-start',
-    backgroundColor: '#0a0a0a',
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    backgroundColor: ONBOARDING_COLORS.SURFACE,
+    paddingVertical: ONBOARDING_SPACING.XS,
+    paddingHorizontal: ONBOARDING_SPACING.SM + 4,
+    borderRadius: ONBOARDING_BORDER_RADIUS.SM,
     borderWidth: 1,
-    borderColor: '#1f1f1f',
+    borderColor: ONBOARDING_COLORS.BORDER,
   },
   confidenceText: {
-    fontFamily: 'Inter-Medium',
+    ...ONBOARDING_TYPOGRAPHY.SUBTITLE,
     fontSize: 12,
-    color: '#9CA3AF',
   },
   buttonContainer: {
-    padding: 24,
-  },
-  button: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#1f1f1f',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  buttonText: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 16,
-    color: '#000000',
+    padding: ONBOARDING_SPACING.LG,
+    paddingBottom: 40,
   },
 });
 

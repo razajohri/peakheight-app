@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase';
 import { Alert } from 'react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
 
 // Authentication service with comprehensive error handling and security
 export class AuthService {
@@ -44,14 +45,20 @@ export class AuthService {
   // Sign in with email and password
   static async signIn(email, password) {
     try {
+      console.log('🔐 AuthService.signIn called with email:', email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
+        console.error('🔐 Supabase sign in error:', error);
+        console.error('🔐 Error code:', error.code);
+        console.error('🔐 Error message:', error.message);
         throw new Error(this.getErrorMessage(error));
       }
+
+      console.log('🔐 Sign in successful for user:', data.user?.id);
 
       // Update last active timestamp
       if (data.user) {
@@ -60,19 +67,20 @@ export class AuthService {
 
       return { data, error: null };
     } catch (error) {
-      console.error('Sign in error:', error);
+      console.error('🔐 Sign in error caught:', error);
       return { data: null, error: error.message };
     }
   }
 
-  // Sign in with Google (Native)
-  static async signInWithGoogle() {
+  // Sign in with Facebook (Expo OAuth using PKCE)
+  static async signInWithFacebook() {
     try {
-      // For now, use OAuth flow. In production, implement native Google Sign-In
+      // Use Supabase OAuth with app scheme redirect
       const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+        provider: 'facebook',
         options: {
           redirectTo: 'peakheight://auth/callback',
+          skipBrowserRedirect: false,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -86,29 +94,83 @@ export class AuthService {
 
       return { data, error: null };
     } catch (error) {
-      console.error('Google sign in error:', error);
+      console.error('Facebook sign in error:', error);
       return { data: null, error: error.message };
     }
   }
 
-  // Sign in with Apple (Native)
+  // Sign in with Apple using native Apple Authentication
   static async signInWithApple() {
     try {
-      // For now, use OAuth flow. In production, implement native Apple Sign-In
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'apple',
-        options: {
-          redirectTo: 'peakheight://auth/callback',
-        },
+      console.log('🍎 AuthService.signInWithApple called');
+
+      // Check if Apple Authentication is available
+      const isAvailable = await AppleAuthentication.isAvailableAsync();
+      if (!isAvailable) {
+        throw new Error('Apple Sign-In is not available on this device');
+      }
+
+      console.log('🍎 Starting native Apple authentication...');
+
+      // Request Apple ID credential
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
       });
 
+      console.log('🍎 Apple credential received:', {
+        user: credential.user,
+        email: credential.email,
+        fullName: credential.fullName,
+        identityToken: credential.identityToken ? 'Present' : 'Missing',
+      });
+
+      if (!credential.identityToken) {
+        throw new Error('No identity token received from Apple');
+      }
+
+      // Sign in to Supabase with the Apple ID token
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: credential.identityToken,
+      });
+
+      console.log('🍎 Supabase signInWithIdToken response:', { data, error });
+
       if (error) {
+        console.log('🍎 Supabase signInWithIdToken error:', error);
         throw new Error(this.getErrorMessage(error));
       }
 
+      // Save Apple user name data if provided (only available on first sign-in)
+      if (credential.fullName && data?.user?.id) {
+        const firstName = credential.fullName.givenName || '';
+        const lastName = credential.fullName.familyName || '';
+        
+        if (firstName || lastName) {
+          console.log('🍎 Saving Apple user name:', { firstName, lastName });
+          
+          // Minimal delay for profile creation
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+          // Update profile with name data
+          const displayName = `${firstName} ${lastName}`.trim();
+          await this.updateUserProfile(data.user.id, {
+            firstName,
+            lastName,
+            displayName: displayName || undefined,
+          });
+          
+          console.log('🍎 Apple user name saved successfully');
+        }
+      }
+
+      console.log('🍎 Apple sign in successful');
       return { data, error: null };
     } catch (error) {
-      console.error('Apple sign in error:', error);
+      console.error('🍎 Apple sign in error:', error);
       return { data: null, error: error.message };
     }
   }
@@ -240,6 +302,34 @@ export class AuthService {
   // Check if user has premium access
   static async checkPremiumStatus(userId) {
     try {
+      // Bypass RevenueCat for test users
+      const bypassUserIds = [
+        'db497060-1ca7-428f-adcd-7546b72405de', // roman.lakhnyu@gmail.com
+        'c8c02575-4351-4953-b04b-3c6c8adbcde2', // usepeakheight@gmail.com
+        'a8e234d9-dd05-4d72-9d0b-5cbbfc1022a6', // imeddieking@gmail.com
+        'ebb90fe5-eec7-4696-ac61-48432db46e0b', // immujtaba@gmail.com (old ID)
+        'b241a0ec-bd7b-46d9-93cf-29ab6a37dde1'  // immujtaba@gmail.com
+      ];
+      
+      if (bypassUserIds.includes(userId)) {
+        // Check users table premium_status for bypass users
+        const { data: userData } = await supabase
+          .from('users')
+          .select('premium_status, premium_expires_at')
+          .eq('id', userId)
+          .single();
+        
+        if (userData?.premium_status) {
+          return { 
+            isPremium: true, 
+            subscription: { 
+              status: 'active',
+              end_date: userData.premium_expires_at || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+            } 
+          };
+        }
+      }
+
       const { data, error } = await supabase
         .from('user_subscriptions')
         .select('status, end_date')
@@ -313,14 +403,57 @@ export class AuthService {
       if (updates.parentHeightMother !== undefined) mapped.parent_height_mother = updates.parentHeightMother;
       if (updates.motivation !== undefined) mapped.motivation = updates.motivation;
       if (updates.barriers !== undefined) mapped.barriers = updates.barriers;
+      if (updates.triedOptions !== undefined) mapped.tried_options = updates.triedOptions;
+      if (updates.stoppingGoals !== undefined) mapped.stopping_goals = updates.stoppingGoals;
       if (updates.onboardingCompleted !== undefined) mapped.onboarding_completed = updates.onboardingCompleted;
 
       // Additional onboarding fields
       if (updates.ethnicity !== undefined) mapped.ethnicity = updates.ethnicity;
       if (updates.footSize !== undefined) mapped.foot_size = updates.footSize;
       if (updates.footSizeSystem !== undefined) mapped.foot_size_system = updates.footSizeSystem;
-      if (updates.workoutFrequency !== undefined) mapped.workout_frequency = updates.workoutFrequency;
-      if (updates.sleepHours !== undefined) mapped.sleep_hours = updates.sleepHours;
+      // IMPORTANT: Base growth factor data (workout_frequency, sleep_hours) should ONLY be updated
+      // when explicitly provided by the user. Never auto-calculate or infer these values.
+      // NOTE: The calculated growth factor SCORES (Nutrition, Stretching Routine) will update
+      // automatically based on daily task completions - that's expected behavior.
+      if (updates.workoutFrequency !== undefined) {
+        // Only update if explicitly provided (not null, not undefined, not empty string)
+        if (updates.workoutFrequency !== null && updates.workoutFrequency !== '') {
+          // Map onboarding values to database constraint values
+          // Database expects: 'never', 'rarely', 'sometimes', 'often', 'daily'
+          // Onboarding sends: '0-2', '3-4', '5-7' (and legacy: '3-5', '6+')
+          const frequencyMap = {
+            '0-2': 'rarely',
+            '3-4': 'sometimes',
+            '5-7': 'often',
+            // Legacy mappings for backward compatibility
+            '3-5': 'sometimes',
+            '6+': 'often'
+          };
+          const validDbValues = ['never', 'rarely', 'sometimes', 'often', 'daily'];
+          // If it's already a valid DB value, use it; otherwise map it or fallback
+          if (validDbValues.includes(updates.workoutFrequency)) {
+            mapped.workout_frequency = updates.workoutFrequency;
+          } else {
+            mapped.workout_frequency = frequencyMap[updates.workoutFrequency] || 'sometimes';
+          }
+        }
+        // If workoutFrequency is null or empty, do NOT update it (preserve existing value)
+      }
+      // IMPORTANT: sleep_hours should ONLY be updated when explicitly provided by the user
+      // Never auto-calculate or infer sleep hours from other data
+      // NOTE: The Sleep Quality growth factor SCORE will be calculated from this value,
+      // but the underlying sleep_hours value itself should only change when user logs it
+      if (updates.sleepHours !== undefined && updates.sleepHours !== null) {
+        // Validate sleep hours is a reasonable number (0-24)
+        const sleepHoursNum = typeof updates.sleepHours === 'number' 
+          ? updates.sleepHours 
+          : parseFloat(updates.sleepHours);
+        if (!isNaN(sleepHoursNum) && sleepHoursNum >= 0 && sleepHoursNum <= 24) {
+          mapped.sleep_hours = sleepHoursNum;
+        } else {
+          console.warn(`Invalid sleep_hours value: ${updates.sleepHours}. Skipping update.`);
+        }
+      }
       if (updates.parentMeasurementSystem !== undefined) mapped.parent_measurement_system = updates.parentMeasurementSystem;
       if (updates.fatherFeet !== undefined) mapped.father_feet = updates.fatherFeet;
       if (updates.fatherInches !== undefined) mapped.father_inches = updates.fatherInches;
@@ -330,6 +463,9 @@ export class AuthService {
       if (updates.motherCm !== undefined) mapped.mother_cm = updates.motherCm;
       if (updates.smokingStatus !== undefined) mapped.smoking_status = updates.smokingStatus;
       if (updates.drinkingStatus !== undefined) mapped.drinking_status = updates.drinkingStatus;
+      if (updates.avatarUrl !== undefined) mapped.avatar_url = updates.avatarUrl;
+      // Optional onboarding email, kept separate from auth email
+      if (updates.contactEmail !== undefined) mapped.contact_email = updates.contactEmail;
 
       // Add updated_at timestamp
       mapped.updated_at = new Date().toISOString();

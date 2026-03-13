@@ -3,17 +3,18 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   FlatList,
   RefreshControl,
   Dimensions,
   StatusBar,
-  Alert
+  Alert,
+  Animated,
+  Platform
 } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Icon from '../components/UI/Icon';
 import TribeHeader from '../components/Tribe/TribeHeader';
-import FilterBar from '../components/Tribe/FilterBar';
 
 // Components
 import PostCard from '../components/Tribe/PostCard';
@@ -23,20 +24,28 @@ import CommentModal from '../components/Tribe/CommentModal';
 import { LoadingState, ErrorState, EmptyState } from '../components/Tribe/EmptyStates';
 import CollapsedComposer from '../components/Tribe/CollapsedComposer';
 import PostList from '../components/Tribe/PostList';
+import NewMembersCarousel from '../components/Tribe/NewMembersCarousel';
 
 // Services
 import { DatabaseService } from '../services/database';
 import { RealtimeService } from '../services/realtimeService';
 import { ShareService } from '../services/shareService';
+import { ImageUploadService } from '../services/imageUploadService';
 import { supabase } from '../config/supabase';
 
 // Context
 import { useUser } from '../contexts/UserContext';
+import StreakModal from '../components/Home/StreakModal';
+import StreakFreezeModal from '../components/Home/StreakFreezeModal';
+import SeedRetentionModal from '../components/Home/SeedRetentionModal';
+import { StreakFreezeService } from '../services/streakFreezeService';
+import { SoundService } from '../services/soundService';
+import * as Haptics from 'expo-haptics';
 
 const TribeScreen = ({ navigation, onNavigateToProfile }) => {
-  const { userProfile } = useUser();
-  const [filter, setFilter] = useState('Latest');
+  const { userProfile, userProgress, fetchUserProfile } = useUser();
   const [posts, setPosts] = useState([]);
+  const [joinEvents, setJoinEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -45,17 +54,22 @@ const TribeScreen = ({ navigation, onNavigateToProfile }) => {
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
   const [selectedPostForComment, setSelectedPostForComment] = useState(null);
+  const [selectedCommentForReply, setSelectedCommentForReply] = useState(null);
   const [postText, setPostText] = useState('');
   const [selectedImages, setSelectedImages] = useState([]);
   const [heightTag, setHeightTag] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [isStreakModalVisible, setStreakModalVisible] = useState(false);
+  const [isFreezeModalVisible, setFreezeModalVisible] = useState(false);
+  const [isSeedRetentionModalVisible, setSeedRetentionModalVisible] = useState(false);
+  const [freezeStatus, setFreezeStatus] = useState({ available: false, previousStreak: 0, currentStreak: 0 });
 
   // Removed scroll animation since header is now fixed
   const screenHeight = Dimensions.get('window').height;
   const flatListRef = useRef(null);
 
   // Real API call to fetch posts from Supabase
-  const fetchPosts = async (filterType = filter) => {
+  const fetchPosts = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -66,12 +80,8 @@ const TribeScreen = ({ navigation, onNavigateToProfile }) => {
         throw new Error('User not authenticated');
       }
 
-      // Map filter to post type (only for content filters, not sorting filters)
+      // Fetch all posts (no filtering by type)
       let postType = null;
-      if (filterType === 'Progress') postType = 'progress';
-      else if (filterType === 'Questions') postType = 'question';
-      else if (filterType === 'Tips') postType = 'tip';
-      // For 'Latest', 'Most Popular', 'Oldest' - fetch all posts (postType remains null)
 
       // Fetch posts from database
       const { data, error } = await DatabaseService.getCommunityPosts(20, 0, postType);
@@ -80,49 +90,164 @@ const TribeScreen = ({ navigation, onNavigateToProfile }) => {
         throw new Error(error);
       }
 
-      // Transform data to match expected format
-      const transformedPosts = (data || []).map(post => ({
-        id: post.id,
-        user: {
-          id: post.users?.id || post.user_id,
-          name: post.users?.display_name || 'Anonymous',
-          avatar: post.users?.avatar_url || 'https://via.placeholder.com/40x40/cccccc/666666?text=' + (post.users?.display_name?.charAt(0) || 'U'),
-        },
-        text: post.content,
-        content: post.content,
-        type: post.post_type,
-        imageUrls: post.image_urls || [],
-        images: post.image_urls || [],
-        heightData: post.height_data,
-        heightTag: post.height_data?.current_height || '5\'10"',
-        likeCount: post.likes_count || 0,
-        commentCount: post.comments_count || 0,
-        createdAt: new Date(post.created_at),
-        isLiked: post.post_likes?.some(like => like.user_id === user.id) || false,
-        liked: post.post_likes?.some(like => like.user_id === user.id) || false,
-        saved: false,
-        comments: [],
-      }));
-
-      // Sort based on filter
-      let sortedPosts = [...transformedPosts];
-
-      switch (filterType) {
-        case 'Latest':
-          sortedPosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-          break;
-        case 'Most Popular':
-          sortedPosts.sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0));
-          break;
-        case 'Oldest':
-          sortedPosts.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-          break;
-        default:
-          // Default to Latest if filter not recognized
-          sortedPosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-          break;
+      // Fetch recent join events (last 7 days - increased from 48 hours)
+      const { data: joinEventsData, error: joinEventsError } = await DatabaseService.getRecentJoinEvents(10, 168); // 168 hours = 7 days
+      if (joinEventsError) {
+        console.error('❌ Error fetching join events:', joinEventsError);
+        setJoinEvents([]);
+      } else {
+        console.log('✅ Fetched join events:', joinEventsData?.length || 0, 'events');
+        
+        // Filter out specific users: Rishi Shah, Vetle, Amani
+        const usersToFilter = ['Rishi Shah', 'Vetle', 'Amani'];
+        const filteredJoinEvents = (joinEventsData || []).filter(event => {
+          let userName = 'Unknown';
+          if (event.users?.display_name && event.users.display_name.trim()) {
+            userName = event.users.display_name;
+          } else if (event.users?.first_name || event.users?.last_name) {
+            const fullName = `${event.users.first_name || ''} ${event.users.last_name || ''}`.trim();
+            if (fullName) {
+              userName = fullName;
+            } else if (event.users?.email) {
+              userName = event.users.email.split('@')[0];
+            }
+          } else if (event.users?.email) {
+            userName = event.users.email.split('@')[0];
+          }
+          
+          // Check if user name matches any of the filtered names (case-insensitive)
+          return !usersToFilter.some(filterName => 
+            userName.toLowerCase().includes(filterName.toLowerCase()) || 
+            filterName.toLowerCase().includes(userName.toLowerCase())
+          );
+        });
+        
+        if (filteredJoinEvents.length > 0) {
+          filteredJoinEvents.forEach((e, idx) => {
+            const userName = e.users?.display_name || e.users?.first_name || e.users?.email?.split('@')[0] || 'Unknown';
+            console.log(`  ${idx + 1}. ${userName} joined at ${e.joined_at}`);
+          });
+        }
+        setJoinEvents(filteredJoinEvents);
       }
 
+      // Transform data to match expected format
+      const transformedPosts = (data || []).map(post => {
+        // Debug: Log user data for first post
+        if (data.indexOf(post) === 0) {
+          console.log('🔍 First post user data:', post.users);
+          console.log('🔍 User ID:', post.user_id);
+          console.log('🔍 Display name:', post.users?.display_name);
+          console.log('🔍 First name:', post.users?.first_name);
+          console.log('🔍 Last name:', post.users?.last_name);
+          console.log('🔍 Email:', post.users?.email);
+          console.log('🔍 Comments:', post.comments);
+        }
+        
+        // Construct name: try display_name, then first_name + last_name, then email, finally Anonymous
+        let userName = 'Anonymous';
+        if (post.users?.display_name && post.users.display_name.trim()) {
+          userName = post.users.display_name;
+        } else if (post.users?.first_name || post.users?.last_name) {
+          const fullName = `${post.users.first_name || ''} ${post.users.last_name || ''}`.trim();
+          if (fullName) {
+            userName = fullName;
+          } else if (post.users?.email) {
+            userName = post.users.email.split('@')[0];
+          }
+        } else if (post.users?.email) {
+          userName = post.users.email.split('@')[0];
+        }
+
+        // Calculate age from date_of_birth
+        const calculateAge = (dateOfBirth) => {
+          if (!dateOfBirth) return null;
+          const birthDate = new Date(dateOfBirth);
+          const today = new Date();
+          let age = today.getFullYear() - birthDate.getFullYear();
+          const monthDiff = today.getMonth() - birthDate.getMonth();
+          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+          }
+          return age;
+        };
+
+        const userAge = calculateAge(post.users?.date_of_birth);
+
+        // Derive like information robustly so counts never show 0 when likes exist
+        const likesFromRelation = Array.isArray(post.post_likes) ? post.post_likes.length : 0;
+        let likeCount = typeof post.likes_count === 'number' ? post.likes_count : 0;
+        // If the relation has more likes than the counter, trust the relation
+        if (likesFromRelation > likeCount) {
+          likeCount = likesFromRelation;
+        }
+        const isLikedByUser = post.post_likes?.some(like => like.user_id === user.id) || false;
+        // If this user has liked the post but count is still 0, force at least 1
+        if (isLikedByUser && likeCount === 0) {
+          likeCount = 1;
+        }
+
+        // Transform comments
+        const transformedComments = (post.comments || []).map(comment => {
+          // Get comment author name
+          let commentUserName = 'Anonymous';
+          if (comment.users?.display_name && comment.users.display_name.trim()) {
+            commentUserName = comment.users.display_name;
+          } else if (comment.users?.first_name || comment.users?.last_name) {
+            const fullName = `${comment.users.first_name || ''} ${comment.users.last_name || ''}`.trim();
+            if (fullName) {
+              commentUserName = fullName;
+            } else if (comment.users?.email) {
+              commentUserName = comment.users.email.split('@')[0];
+            }
+          } else if (comment.users?.email) {
+            commentUserName = comment.users.email.split('@')[0];
+          }
+
+          return {
+            id: comment.id,
+            user: {
+              id: comment.user_id,
+              name: commentUserName,
+              avatar: comment.users?.avatar_url || 'https://via.placeholder.com/40x40/cccccc/666666?text=' + (commentUserName.charAt(0) || 'U'),
+            },
+            text: comment.content,
+            createdAt: new Date(comment.created_at),
+            parentCommentId: comment.parent_comment_id || null,
+          };
+        });
+
+        return {
+          id: post.id,
+          user: {
+            id: post.users?.id || post.user_id,
+            name: userName,
+            avatar: post.users?.avatar_url || 'https://via.placeholder.com/40x40/cccccc/666666?text=' + (userName.charAt(0) || 'U'),
+            age: userAge,
+          },
+          text: post.content,
+          content: post.content,
+          type: post.post_type,
+          imageUrls: (post.image_urls || []).map(url => ImageUploadService.getImageUrl(url)).filter(url => url !== null),
+          images: (post.image_urls || []).map(url => ImageUploadService.getImageUrl(url)).filter(url => url !== null),
+          heightData: post.height_data,
+          heightTag: post.height_data?.current_height || '5\'10"',
+          likeCount,
+          commentCount: transformedComments.length,
+          createdAt: new Date(post.created_at),
+          isLiked: isLikedByUser,
+          liked: isLikedByUser,
+          saved: post.post_saves?.some(save => save.user_id === user.id) || false,
+          comments: transformedComments,
+        };
+      });
+
+      // Sort posts by latest (newest first)
+      const sortedPosts = [...transformedPosts].sort((a, b) => {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        return dateB - dateA; // Newest first
+      });
       setPosts(sortedPosts);
     } catch (err) {
       setError(err.message);
@@ -137,9 +262,21 @@ const TribeScreen = ({ navigation, onNavigateToProfile }) => {
     fetchPosts();
   }, []);
 
+  // Fetch freeze status
+  useEffect(() => {
+    const fetchFreezeStatus = async () => {
+      if (userProfile?.id) {
+        const status = await StreakFreezeService.getFreezeStatus(userProfile.id);
+        setFreezeStatus(status);
+      }
+    };
+    fetchFreezeStatus();
+  }, [userProfile?.id]);
+
   // Set up real-time subscriptions
   useEffect(() => {
     let communitySubscription;
+    let joinEventsSubscription;
 
     const setupRealtime = async () => {
       try {
@@ -149,6 +286,46 @@ const TribeScreen = ({ navigation, onNavigateToProfile }) => {
           // Refresh posts when new ones are added
           if (payload.eventType === 'INSERT') {
             fetchPosts();
+          }
+        });
+
+        // Subscribe to join events
+        joinEventsSubscription = RealtimeService.subscribeToJoinEvents((payload) => {
+          console.log('Join event update:', payload);
+          // Refresh join events when new ones are added
+          if (payload.eventType === 'INSERT') {
+            // Refresh join events
+            DatabaseService.getRecentJoinEvents(10, 168).then(({ data, error }) => {
+              if (!error && data) {
+                // Filter out specific users: Rishi Shah, Vetle, Amani
+                const usersToFilter = ['Rishi Shah', 'Vetle', 'Amani'];
+                const filteredJoinEvents = (data || []).filter(event => {
+                  let userName = 'Unknown';
+                  if (event.users?.display_name && event.users.display_name.trim()) {
+                    userName = event.users.display_name;
+                  } else if (event.users?.first_name || event.users?.last_name) {
+                    const fullName = `${event.users.first_name || ''} ${event.users.last_name || ''}`.trim();
+                    if (fullName) {
+                      userName = fullName;
+                    } else if (event.users?.email) {
+                      userName = event.users.email.split('@')[0];
+                    }
+                  } else if (event.users?.email) {
+                    userName = event.users.email.split('@')[0];
+                  }
+                  
+                  // Check if user name matches any of the filtered names (case-insensitive)
+                  return !usersToFilter.some(filterName => 
+                    userName.toLowerCase().includes(filterName.toLowerCase()) || 
+                    filterName.toLowerCase().includes(userName.toLowerCase())
+                  );
+                });
+                console.log('✅ Real-time: Updated join events:', filteredJoinEvents.length);
+                setJoinEvents(filteredJoinEvents);
+              } else {
+                console.error('❌ Real-time: Error refreshing join events:', error);
+              }
+            });
           }
         });
       } catch (error) {
@@ -162,15 +339,11 @@ const TribeScreen = ({ navigation, onNavigateToProfile }) => {
       if (communitySubscription) {
         communitySubscription.unsubscribe();
       }
+      if (joinEventsSubscription) {
+        joinEventsSubscription.unsubscribe();
+      }
     };
   }, []);
-
-  // Handle filter change
-  const handleFilterChange = (newFilter) => {
-    setFilter(newFilter);
-    fetchPosts(newFilter);
-    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-  };
 
   // Handle refresh
   const handleRefresh = () => {
@@ -185,56 +358,46 @@ const TribeScreen = ({ navigation, onNavigateToProfile }) => {
       return;
     }
 
-    // Optimistically update UI
-    setPosts(posts.map(post => {
-      if (post.id === postId) {
-        const newLiked = !post.liked;
-        return {
-          ...post,
-          liked: newLiked,
-          likeCount: newLiked ? post.likeCount + 1 : post.likeCount - 1
-        };
-      }
-      return post;
-    }));
+    // Optimistically update UI (never allow negative like counts)
+    setPosts(prevPosts => {
+      return prevPosts.map(post => {
+        if (post.id === postId) {
+          const newLiked = !post.liked;
+          return {
+            ...post,
+            liked: newLiked,
+            likeCount: newLiked
+              ? post.likeCount + 1
+              : Math.max(0, post.likeCount - 1),
+          };
+        }
+        return post;
+      });
+    });
 
-    // Save to database
+    // Save to database (keep optimistic UI even if this fails)
     try {
       const { error } = await DatabaseService.togglePostLike(userProfile.id, postId);
       if (error) {
         console.error('Error toggling like:', error);
-        // Revert optimistic update on error
-        setPosts(posts.map(post => {
-          if (post.id === postId) {
-            return {
-              ...post,
-              liked: !post.liked,
-              likeCount: !post.liked ? post.likeCount + 1 : post.likeCount - 1
-            };
-          }
-          return post;
-        }));
-        Alert.alert('Error', 'Failed to update like. Please try again.');
+        // Do NOT revert optimistic UI; just notify user that sync failed
+        Alert.alert('Network issue', 'Your like is saved locally, but syncing to the server failed. It will retry later.');
       }
     } catch (error) {
       console.error('Error toggling like:', error);
-      // Revert optimistic update on error
-      setPosts(posts.map(post => {
-        if (post.id === postId) {
-          return {
-            ...post,
-            liked: !post.liked,
-            likeCount: !post.liked ? post.likeCount + 1 : post.likeCount - 1
-          };
-        }
-        return post;
-      }));
-      Alert.alert('Error', 'Failed to update like. Please try again.');
+      // Keep optimistic UI state; only show a message
+      Alert.alert('Network issue', 'Your like is saved locally, but syncing to the server failed. Please try again later.');
     }
   };
 
   // Handle save
-  const handleSave = (postId) => {
+  const handleSave = async (postId) => {
+    if (!userProfile?.id) {
+      Alert.alert('Error', 'Please log in to save posts');
+      return;
+    }
+
+    // Optimistically update UI
     setPosts(posts.map(post => {
       if (post.id === postId) {
         return {
@@ -244,9 +407,43 @@ const TribeScreen = ({ navigation, onNavigateToProfile }) => {
       }
       return post;
     }));
+
+    // Save to database
+    try {
+      const { error } = await DatabaseService.togglePostSave(userProfile.id, postId);
+      if (error) {
+        console.error('Error toggling save:', error);
+        // Revert optimistic update on error
+        setPosts(posts.map(post => {
+          if (post.id === postId) {
+            return {
+              ...post,
+              saved: !post.saved
+            };
+          }
+          return post;
+        }));
+        Alert.alert('Error', 'Failed to update save. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error toggling save:', error);
+      // Revert optimistic update on error
+      setPosts(posts.map(post => {
+        if (post.id === postId) {
+          return {
+            ...post,
+            saved: !post.saved
+          };
+        }
+        return post;
+      }));
+    }
   };
 
-  // Handle comment
+  // State for modal mode
+  const [commentModalMode, setCommentModalMode] = useState('add');
+
+  // Handle comment - for adding comments (comment icon click)
   const handleComment = (postId) => {
     if (!userProfile?.id) {
       Alert.alert('Error', 'Please log in to comment on posts');
@@ -254,37 +451,89 @@ const TribeScreen = ({ navigation, onNavigateToProfile }) => {
     }
 
     setSelectedPostForComment(postId);
+    setCommentModalMode('add');
     setCommentModalVisible(true);
   };
 
-  const handleCommentSubmit = async (commentText) => {
+  // Handle view comments - for viewing all comments ("View all" link)
+  const handleViewComments = (postId) => {
+    if (!userProfile?.id) {
+      Alert.alert('Error', 'Please log in to view comments');
+      return;
+    }
+
+    // Find the post to get its comments
+    const post = posts.find(p => p.id === postId);
+    
+    setSelectedPostForComment(postId);
+    setSelectedPost(post);
+    setCommentModalMode('view');
+    setCommentModalVisible(true);
+  };
+
+  const handleCommentSubmit = async (commentText, parentCommentId = null) => {
     try {
-      const { error } = await DatabaseService.addComment(
+      console.log('🔷 Submitting comment:', {
+        userId: userProfile.id,
+        postId: selectedPostForComment,
+        parentCommentId: parentCommentId,
+        commentText: commentText.substring(0, 50)
+      });
+
+      const { data, error } = await DatabaseService.addComment(
         userProfile.id,
         selectedPostForComment,
-        commentText
+        commentText,
+        parentCommentId
       );
 
       if (error) {
-        console.error('Error adding comment:', error);
-        Alert.alert('Error', 'Failed to add comment. Please try again.');
+        console.error('❌ Error adding comment:', error);
+        Alert.alert('Error', `Failed to add comment: ${error}`);
         return;
       }
 
-      // Refresh posts to show new comment
-      fetchPosts();
+      console.log('✅ Comment added successfully:', data);
+
+      // Close modal first
       setCommentModalVisible(false);
       setSelectedPostForComment(null);
-      Alert.alert('Success', 'Comment added successfully!');
+      setSelectedCommentForReply(null);
+
+      // Then refresh posts to show new comment
+      await fetchPosts();
+      
+      // Show success message after refresh
+      Alert.alert('Success', parentCommentId ? 'Reply added successfully!' : 'Comment added successfully!');
     } catch (error) {
-      console.error('Error adding comment:', error);
-      Alert.alert('Error', 'Failed to add comment. Please try again.');
+      console.error('❌ Exception adding comment:', error);
+      Alert.alert('Error', `Failed to add comment: ${error.message || error}`);
     }
   };
 
   const closeCommentModal = () => {
     setCommentModalVisible(false);
     setSelectedPostForComment(null);
+    setSelectedCommentForReply(null);
+  };
+
+  // Handle reply to comment
+  const handleReplyToComment = (commentId) => {
+    if (commentId === null) {
+      // Clear reply selection
+      setSelectedCommentForReply(null);
+      return;
+    }
+    if (!userProfile?.id) {
+      Alert.alert('Error', 'Please log in to reply to comments');
+      return;
+    }
+    setSelectedCommentForReply(commentId);
+    setCommentModalMode('add');
+    // If modal is not visible, open it; if it's already open in view mode, it will switch to add mode
+    if (!commentModalVisible) {
+      setCommentModalVisible(true);
+    }
   };
 
   // Handle more options
@@ -419,12 +668,18 @@ const TribeScreen = ({ navigation, onNavigateToProfile }) => {
     Alert.alert('Coming Soon', 'Notifications coming soon!');
   };
 
+
   // Render post item moved to PostList component
 
   // Header is now fixed/sticky - no animation
 
   return (
-    <SafeAreaView style={styles.container}>
+    <LinearGradient
+      colors={['#FFFFFF', '#F8F9FA', '#F1F3F4']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      style={styles.container}
+    >
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       <TribeHeader
@@ -436,16 +691,19 @@ const TribeScreen = ({ navigation, onNavigateToProfile }) => {
             navigation.goBack();
           }
         }}
-        onSettings={() => {
-          if (typeof onNavigateToProfile === 'function') {
-            onNavigateToProfile();
-          } else if (navigation && navigation.navigate) {
-            navigation.navigate('profile');
-          }
+        onStreak={async () => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          await SoundService.playStreakSound();
+          setStreakModalVisible(true);
+        }}
+        onShield={async () => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          setSeedRetentionModalVisible(true);
         }}
       />
 
-      <FilterBar styles={styles} filter={filter} onChange={handleFilterChange} />
+      {/* New members carousel (story-style circles) */}
+      <NewMembersCarousel joinEvents={joinEvents} />
 
       {/* Collapsed Composer */}
       <CollapsedComposer styles={styles} onOpen={() => setComposerVisible(true)} />
@@ -463,6 +721,7 @@ const TribeScreen = ({ navigation, onNavigateToProfile }) => {
         onLike={handleLike}
         onSave={handleSave}
         onComment={handleComment}
+        onViewComments={handleViewComments}
         onMore={handleMore}
         onShare={handleShareModal}
       />
@@ -493,65 +752,86 @@ const TribeScreen = ({ navigation, onNavigateToProfile }) => {
         visible={commentModalVisible}
         onClose={closeCommentModal}
         onSubmit={handleCommentSubmit}
+        existingComments={selectedPost?.comments || []}
+        viewMode={commentModalMode}
+        onReply={handleReplyToComment}
+        selectedCommentForReply={selectedCommentForReply}
+        onSwitchToAddMode={() => {
+          setSelectedCommentForReply(null);
+          setCommentModalMode('add');
+        }}
       />
 
-    </SafeAreaView>
+      {/* Streak Modal */}
+      <StreakModal
+        visible={isStreakModalVisible}
+        onClose={() => setStreakModalVisible(false)}
+        userProgress={userProgress}
+        freezeStatus={freezeStatus}
+        onUseFreeze={() => {
+          setStreakModalVisible(false);
+          setFreezeModalVisible(true);
+        }}
+      />
+
+      {/* Streak Freeze Modal */}
+      <StreakFreezeModal
+        visible={isFreezeModalVisible}
+        onClose={() => setFreezeModalVisible(false)}
+        previousStreak={freezeStatus.previousStreak}
+        onRestore={async () => {
+          if (userProfile?.id) {
+            const result = await StreakFreezeService.useStreakFreeze(userProfile.id);
+            if (result.success) {
+              await fetchUserProfile(userProfile.id);
+              setFreezeModalVisible(false);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              Alert.alert(
+                '❄️ Streak Restored!',
+                `Your streak of ${result.restoredStreak} days has been restored! Keep up the amazing work! 🔥`
+              );
+            } else {
+              Alert.alert('Error', result.error || 'Failed to restore streak. Please try again.');
+            }
+          }
+        }}
+      />
+
+      {/* Seed Retention Modal */}
+      <SeedRetentionModal
+        visible={isSeedRetentionModalVisible}
+        onClose={() => setSeedRetentionModalVisible(false)}
+      />
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 16,
+    paddingTop: Platform.OS === 'ios' ? 0 : 4,
+    paddingBottom: 8,
   },
   backButton: {
-    padding: 4,
+    padding: 2,
   },
   headerTitle: {
     color: '#000000',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     letterSpacing: 1,
-  },
-  filterButton: {
-    padding: 4,
-  },
-  filterBar: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginTop: 8,
-  },
-  filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0,0,0,0.06)',
-    marginRight: 8,
-  },
-  filterChipActive: {
-    backgroundColor: '#000000',
-  },
-  filterChipText: {
-    color: '#000000',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  filterChipTextActive: {
-    color: '#FFFFFF',
   },
   collapsedComposer: {
     marginHorizontal: 16,
     marginVertical: 12,
-    padding: 12,
-    borderRadius: 24,
+    padding: 10,
+    borderRadius: 21,
     backgroundColor: '#F5F5F5',
     borderWidth: 1,
     borderColor: '#E5E5E5',
@@ -562,6 +842,28 @@ const styles = StyleSheet.create({
   },
   postList: {
     paddingHorizontal: 16,
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  debugContainer: {
+    marginTop: 20,
+    padding: 10,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 8,
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#666666',
+    textAlign: 'center',
   },
 });
 

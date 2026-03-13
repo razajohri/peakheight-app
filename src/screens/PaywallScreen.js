@@ -8,9 +8,31 @@ const PaywallScreen = ({ onSuccess, onBack }) => {
 
   const handleSubscribe = async (plan) => {
     try {
-      const result = await purchaseSubscription(plan.id);
+      console.log('💳 Starting subscription purchase for plan:', plan);
+      console.log('💳 Plan object:', JSON.stringify(plan, null, 2));
+
+      // Extract plan type from plan object
+      let planType = 'yearly'; // Default to yearly
+
+      if (plan && typeof plan === 'object') {
+        if (plan.id) {
+          planType = plan.id;
+        } else if (plan.type) {
+          planType = plan.type;
+        } else if (plan.identifier) {
+          // Extract from identifier like 'peakheight_yearly'
+          planType = plan.identifier.includes('weekly') ? 'weekly' : 'yearly';
+        }
+      } else if (typeof plan === 'string') {
+        planType = plan;
+      }
+
+      console.log('💳 Resolved plan type:', planType);
+      const result = await purchaseSubscription(planType);
+
       if (result.success) {
-        // Navigate to main app or show success message
+        console.log('✅ Subscription purchase successful - navigating to main app');
+        // Navigate to main app immediately after successful payment
         if (onSuccess && typeof onSuccess === 'function') {
           onSuccess();
         } else {
@@ -18,10 +40,14 @@ const PaywallScreen = ({ onSuccess, onBack }) => {
         }
       } else {
         // Handle error
-        console.error('Subscription failed:', result.error);
+        console.error('❌ Subscription failed:', result.error);
+        // You might want to show an error message to the user here
       }
     } catch (error) {
-      console.error('Error during subscription:', error);
+      console.error('❌ Error during subscription:', error);
+      console.error('❌ Error details:', error.message);
+      console.error('❌ Error stack:', error.stack);
+      // You might want to show an error message to the user here
     }
   };
 
@@ -44,6 +70,7 @@ const PaywallScreen = ({ onSuccess, onBack }) => {
         visible={true}
         onClose={handleClose}
         onSubscribe={handleSubscribe}
+        onSuccess={onSuccess}
       />
     </View>
   );

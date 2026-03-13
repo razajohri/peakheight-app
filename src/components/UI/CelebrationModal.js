@@ -9,7 +9,7 @@ import Animated, {
   withDelay,
   runOnJS,
 } from 'react-native-reanimated';
-import Icon from 'react-native-vector-icons/Ionicons';
+import Icon from '../UI/Icon';
 import ConfettiAnimation from './ConfettiAnimation';
 
 const { width, height } = Dimensions.get('window');
@@ -29,16 +29,16 @@ const CelebrationModal = ({
 
   useEffect(() => {
     if (visible) {
-      // Show modal with spring animation
+      // Show modal with faster spring animation
       scale.value = withSpring(1, {
-        damping: 15,
-        stiffness: 150,
+        damping: 20,
+        stiffness: 300,
       });
-      opacity.value = withTiming(1, { duration: 300 });
+      opacity.value = withTiming(1, { duration: 150 });
 
-      // Show confetti after a short delay
+      // Show confetti immediately (no delay)
       if (showConfetti) {
-        confettiVisible.value = withDelay(200, withTiming(1, { duration: 200 }));
+        confettiVisible.value = withTiming(1, { duration: 100 });
       }
 
       // Auto close if enabled
@@ -48,15 +48,15 @@ const CelebrationModal = ({
         }, autoCloseDelay);
       }
     } else {
-      scale.value = withTiming(0, { duration: 200 });
-      opacity.value = withTiming(0, { duration: 200 });
-      confettiVisible.value = withTiming(0, { duration: 200 });
+      scale.value = withTiming(0, { duration: 150 });
+      opacity.value = withTiming(0, { duration: 150 });
+      confettiVisible.value = withTiming(0, { duration: 150 });
     }
   }, [visible]);
 
   const handleClose = () => {
-    scale.value = withTiming(0, { duration: 200 });
-    opacity.value = withTiming(0, { duration: 200 }, () => {
+    scale.value = withTiming(0, { duration: 150 });
+    opacity.value = withTiming(0, { duration: 150 }, () => {
       runOnJS(onClose)();
     });
   };
@@ -176,3 +176,4 @@ const styles = StyleSheet.create({
 });
 
 export default CelebrationModal;
+

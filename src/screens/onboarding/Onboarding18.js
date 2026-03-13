@@ -106,6 +106,7 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     padding: 24,
+    paddingBottom: 40,
   },
   button: {
     backgroundColor: '#3B5FE3', // Cobalt accent

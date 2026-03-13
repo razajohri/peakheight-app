@@ -8,10 +8,54 @@ import {
   SafeAreaView,
   StatusBar,
   Image,
+  Alert,
+  Platform,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
+import Icon from '../UI/Icon';
 import { useUser } from '../../contexts/UserContext';
 import { DailyPlanService } from '../../services/dailyPlanService';
+import * as Haptics from 'expo-haptics';
+
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+
+const DEFAULT_RECIPE_IMAGE = 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&q=85&w=1200&h=900&fit=crop&dpr=2';
+
+// Local images mapped by recipe name
+const LOCAL_RECIPE_IMAGES = {
+  'Bone-Building Toast': require('../../../assets/recipe library/growth recipes/Bone Building Toast.webp'),
+  'Bone-Building Fish Tacos': require('../../../assets/recipe library/growth recipes/Bone-Building Fish Tacos.webp'),
+  'Bone-Building Smoothie': require('../../../assets/recipe library/growth recipes/Bone-Building Smoothie.webp'),
+  'Bone-Strengthening Lasagna': require('../../../assets/recipe library/growth recipes/Bone-Strengthening Lasagna.webp'),
+  'Bone-Strengthening Pasta': require('../../../assets/recipe library/growth recipes/Bone-Strengthening Pasta.webp'),
+  'Bone-Strengthening Soup': require('../../../assets/recipe library/growth recipes/Bone-Strengthening Soup.webp'),
+  'Calcium-Rich Oatmeal': require('../../../assets/recipe library/growth recipes/Calcium Rich Oatmeal.webp'),
+  'Grilled Salmon Bowl': require('../../../assets/recipe library/growth recipes/Grilled Salmon Bowl.webp'),
+  'Growth Banana Bread': require('../../../assets/recipe library/growth recipes/Growth Banana Bread.webp'),
+  'Growth Breakfast Burrito': require('../../../assets/recipe library/growth recipes/Growth Breakfast Burrito.webp'),
+  'Growth Cereal Bowl': require('../../../assets/recipe library/growth recipes/Growth Cereal Bowl.webp'),
+  'Growth Chicken Curry': require('../../../assets/recipe library/growth recipes/Growth Chicken Curry.webp'),
+  'Growth Chicken Stir-Fry': require('../../../assets/recipe library/growth recipes/Growth Chicken Stir-Fry.webp'),
+  'Growth Hot Chocolate': require('../../../assets/recipe library/growth recipes/Growth Hot Chocolate.webp'),
+  'Growth Milk Shake': require('../../../assets/recipe library/growth recipes/Growth Milk Shake.webp'),
+  'Growth Protein Waffles': require('../../../assets/recipe library/growth recipes/Growth protein waffles.webp'),
+  'Growth Quinoa Bowl': require('../../../assets/recipe library/growth recipes/Growth Quinoa Bowl.webp'),
+  'Growth Scrambled Eggs': require('../../../assets/recipe library/growth recipes/Growth Scrambled Eggs.webp'),
+  'Growth Trail Mix': require('../../../assets/recipe library/growth recipes/Growth Trail Mix.webp'),
+  'Growth Turkey Burger': require('../../../assets/recipe library/growth recipes/Growth Turkey Burger.webp'),
+  'Height-Boosting Pancakes': require('../../../assets/recipe library/growth recipes/Height Boosting Pancakes.webp'),
+  'Height-Boosting Salad': require('../../../assets/recipe library/growth recipes/Height-Boosting Salad.webp'),
+  'Height-Boosting Veggie Bowl': require('../../../assets/recipe library/growth recipes/Height-Boosting Veggie Bowl.webp'),
+  'Sleep-Enhancing Oatmeal': require('../../../assets/recipe library/growth recipes/Sleep-Enhancing Oatmeal.webp'),
+  'Sleep-Supporting Cookies': require('../../../assets/recipe library/growth recipes/Sleep-Supporting Cookies.webp'),
+  // Name-normalized mappings for items with different file names
+  'Growth Protein Smoothie': require('../../../assets/recipe library/growth recipes/Growth Milk Shake.webp'),
+  'Protein French Toast': require('../../../assets/recipe library/growth recipes/Height Boosting Pancakes.webp'),
+  'Bone-Building Yogurt Bowl': require('../../../assets/recipe library/growth recipes/Bone-Building Smoothie.webp'),
+};
+
+const getLocalRecipeImage = (name) => LOCAL_RECIPE_IMAGES[name] || null;
 
 const RecipeLibrary = ({ navigation, onClose }) => {
   const { userProfile } = useUser();
@@ -399,39 +443,55 @@ const RecipeLibrary = ({ navigation, onClose }) => {
     : recipes.filter(recipe => recipe.category === selectedCategory);
 
   const Header = (
-    <View style={styles.header}>
-      <TouchableOpacity style={styles.backButton} onPress={onClose}>
+    <Animated.View entering={FadeIn.duration(300)} style={styles.header}>
+      <TouchableOpacity 
+        style={styles.backButton} 
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          onClose();
+        }}
+      >
         <Icon name="arrow-back" size={24} color="#000000" />
       </TouchableOpacity>
       <Text style={styles.headerTitle}>Recipe Library</Text>
-      <TouchableOpacity style={styles.searchButton}>
+      <TouchableOpacity 
+        style={styles.searchButton}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          // TODO: Implement search
+        }}
+      >
         <Icon name="search" size={24} color="#000000" />
       </TouchableOpacity>
-    </View>
+    </Animated.View>
   );
 
   const CategoryTabs = (
     <View style={styles.categoryTabs}>
-      <View style={styles.categoryGrid}>
-        {categories.map(category => (
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.categoryScrollContent}
+      >
+        {categories.map((category) => {
+          const isActive = selectedCategory === category.id;
+          return (
           <TouchableOpacity
             key={category.id}
-            style={styles.categoryCard}
-            onPress={() => setSelectedCategory(category.id)}
+              style={styles.categoryTabSimple}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setSelectedCategory(category.id);
+              }}
+              activeOpacity={0.6}
           >
-            <View style={styles.categoryIconHolder}>
-              <Icon
-                name={category.icon}
-                size={20}
-                color="#000000"
-              />
-            </View>
-            <Text style={styles.categoryCardText} numberOfLines={2}>
+              <Text style={isActive ? styles.categoryTabTextActive : styles.categoryTabText}>
               {category.name}
             </Text>
           </TouchableOpacity>
-        ))}
-      </View>
+          );
+        })}
+      </ScrollView>
     </View>
   );
 
@@ -446,77 +506,132 @@ const RecipeLibrary = ({ navigation, onClose }) => {
         description: `${recipe.name} • ${recipe.calories} cal • ${recipe.protein}g protein`,
         estimated_time: recipe.prepTime || '5 minutes'
       });
+      // Show success alert
+      Alert.alert(
+        'Added!',
+        `${recipe.name} has been added to today's plan`,
+        [{ text: 'OK' }]
+      );
     } catch (e) {
       console.warn('Failed to add recipe to today', e);
+      Alert.alert(
+        'Error',
+        'Failed to add recipe to today. Please try again.',
+        [{ text: 'OK' }]
+      );
     } finally {
       setAdding(false);
     }
   };
 
-  const RecipeCard = ({ recipe }) => (
-    <TouchableOpacity style={styles.recipeCard}>
-      <View style={styles.recipeImage}>
+  const getListImageSource = (recipe) => {
+    const local = getLocalRecipeImage(recipe.name);
+    if (local) return local;
+    const remote = recipe.image ? recipe.image.split('?')[0] + '?auto=format&q=70&w=900&h=675&fit=crop&dpr=1.5' : DEFAULT_RECIPE_IMAGE;
+    return { uri: remote };
+  };
+
+  const getDetailImageSource = (recipe) => {
+    const local = getLocalRecipeImage(recipe.name);
+    if (local) return local;
+    const remote = recipe.image ? recipe.image.split('?')[0] + '?auto=format&q=75&w=1200&h=900&fit=crop&dpr=1.5' : DEFAULT_RECIPE_IMAGE;
+    return { uri: remote };
+  };
+
+  const RecipeCard = ({ recipe, index }) => (
+    <AnimatedTouchable
+      entering={FadeInDown.delay(200 + index * 50).duration(400).springify()}
+      style={styles.recipeCard}
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setSelectedRecipe(recipe);
+      }}
+      activeOpacity={0.9}
+    >
+      <View style={styles.recipeImageContainer}>
         <Image
-          source={{ uri: recipe.image || DEFAULT_RECIPE_IMAGE }}
-          style={styles.recipeImageContent}
+          source={getListImageSource(recipe)}
+          style={styles.recipeImage}
           resizeMode="cover"
         />
+        <View style={styles.growthScoreBadge}>
+          <Text style={styles.growthScoreBadgeText}>GS {recipe.growthScore}</Text>
+        </View>
       </View>
 
       <View style={styles.recipeContent}>
-        <Text style={styles.recipeName}>{recipe.name}</Text>
-        <Text style={styles.recipeDescription}>{recipe.description}</Text>
+        <Text style={styles.recipeName} numberOfLines={1}>{recipe.name}</Text>
+        <Text style={styles.recipeDescription} numberOfLines={2}>{recipe.description}</Text>
 
         <View style={styles.recipeStats}>
-          <View style={styles.statItem}>
-            <Icon name="time" size={14} color="#666666" />
+          <View style={styles.statBadge}>
+            <Icon name="time-outline" size={12} color="#666666" />
             <Text style={styles.statText}>{recipe.prepTime}</Text>
           </View>
-          <View style={styles.statItem}>
-            <Icon name="flame" size={14} color="#666666" />
+          <View style={styles.statBadge}>
+            <Icon name="flame-outline" size={12} color="#666666" />
             <Text style={styles.statText}>{recipe.calories} cal</Text>
           </View>
-          <View style={styles.statItem}>
-            <Icon name="fitness" size={14} color="#666666" />
-            <Text style={styles.statText}>{recipe.protein}g protein</Text>
+          <View style={styles.statBadge}>
+            <Icon name="fitness-outline" size={12} color="#666666" />
+            <Text style={styles.statText}>{recipe.protein}g</Text>
           </View>
-        </View>
-
-        <View style={styles.growthScoreContainer}>
-          <Text style={styles.growthScoreLabel}>Growth Score</Text>
-          <View style={styles.growthScoreBar}>
-            <View style={[styles.growthScoreFill, { width: `${recipe.growthScore}%` }]} />
-          </View>
-          <Text style={styles.growthScoreText}>{recipe.growthScore}/100</Text>
         </View>
 
         <View style={styles.recipeActions}>
-          <TouchableOpacity style={styles.viewButton} onPress={() => setSelectedRecipe(recipe)}>
-            <Text style={styles.viewButtonText}>View Recipe</Text>
+          <TouchableOpacity 
+            style={styles.viewButton} 
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setSelectedRecipe(recipe);
+            }}
+          >
+            <Text style={styles.viewButtonText}>View</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.addButton} onPress={() => handleAddToToday(recipe)} disabled={adding}>
-            <Icon name="add" size={16} color="#FFFFFF" />
-            <Text style={styles.addButtonText}>{adding ? 'Adding...' : "Add to Today's Plan"}</Text>
+          <TouchableOpacity 
+            style={styles.addButton} 
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              handleAddToToday(recipe);
+            }} 
+            disabled={adding}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['#000000', '#333333']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.addButtonGradient}
+            >
+              <Icon name="add" size={14} color="#FFFFFF" />
+              <Text style={styles.addButtonText}>{adding ? 'Adding...' : 'Add'}</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
       </View>
-    </TouchableOpacity>
+    </AnimatedTouchable>
   );
 
   const RecipeDetail = ({ recipe }) => (
-    <View style={styles.recipeDetailContainer}>
+    <Animated.View entering={FadeIn.duration(300)} style={styles.recipeDetailContainer}>
       <View style={styles.recipeDetailHeader}>
-        <TouchableOpacity style={styles.backButton} onPress={() => setSelectedRecipe(null)}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setSelectedRecipe(null);
+          }}
+        >
           <Icon name="arrow-back" size={24} color="#000000" />
         </TouchableOpacity>
-        <Text style={styles.recipeDetailTitle}>{recipe.name}</Text>
+        <Text style={styles.recipeDetailTitle} numberOfLines={1}>{recipe.name}</Text>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.recipeDetailContent} showsVerticalScrollIndicator={false}>
         <View style={styles.recipeDetailImage}>
           <Image
-            source={{ uri: recipe.image || DEFAULT_RECIPE_IMAGE }}
+            source={getDetailImageSource(recipe)}
             style={styles.recipeDetailImageContent}
             resizeMode="cover"
           />
@@ -526,17 +641,17 @@ const RecipeLibrary = ({ navigation, onClose }) => {
 
         <View style={styles.recipeDetailStats}>
           <View style={styles.detailStatItem}>
-            <Icon name="time" size={20} color="#666666" />
+            <Icon name="time-outline" size={22} color="#000000" />
             <Text style={styles.detailStatLabel}>Prep Time</Text>
             <Text style={styles.detailStatValue}>{recipe.prepTime}</Text>
           </View>
           <View style={styles.detailStatItem}>
-            <Icon name="flame" size={20} color="#666666" />
+            <Icon name="flame-outline" size={22} color="#000000" />
             <Text style={styles.detailStatLabel}>Calories</Text>
             <Text style={styles.detailStatValue}>{recipe.calories}</Text>
           </View>
           <View style={styles.detailStatItem}>
-            <Icon name="fitness" size={20} color="#666666" />
+            <Icon name="fitness-outline" size={22} color="#000000" />
             <Text style={styles.detailStatLabel}>Protein</Text>
             <Text style={styles.detailStatValue}>{recipe.protein}g</Text>
           </View>
@@ -570,13 +685,28 @@ const RecipeLibrary = ({ navigation, onClose }) => {
         </View>
 
         <View style={styles.recipeDetailActions}>
-          <TouchableOpacity style={styles.addToPlanButton} onPress={() => handleAddToToday(recipe)} disabled={adding}>
-            <Icon name="add" size={20} color="#FFFFFF" />
-            <Text style={styles.addToPlanButtonText}>{adding ? 'Adding...' : "Add to Today's Plan"}</Text>
+          <TouchableOpacity 
+            style={styles.addToPlanButton} 
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              handleAddToToday(recipe);
+            }} 
+            disabled={adding}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['#000000', '#333333']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.addToPlanButtonGradient}
+            >
+              <Icon name="add" size={18} color="#FFFFFF" />
+            <Text style={styles.addToPlanButtonText}>{adding ? 'Adding...' : 'Add to Today'}</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </View>
+    </Animated.View>
   );
 
   return (
@@ -589,8 +719,8 @@ const RecipeLibrary = ({ navigation, onClose }) => {
           {Header}
           {CategoryTabs}
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            {filteredRecipes.map(recipe => (
-              <RecipeCard key={recipe.id} recipe={recipe} />
+            {filteredRecipes.map((recipe, index) => (
+              <RecipeCard key={recipe.id} recipe={recipe} index={index} />
             ))}
           </ScrollView>
         </>
@@ -603,14 +733,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    paddingTop: 50, // Add top padding to avoid camera area
+    paddingTop: 0,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: Platform.OS === 'ios' ? 0 : 8,
     paddingBottom: 20,
     backgroundColor: '#FFFFFF',
   },
@@ -627,155 +757,145 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   categoryTabs: {
-    marginBottom: 20,
+    marginBottom: 16,
+    paddingVertical: 12,
+  },
+  categoryScrollContent: {
     paddingHorizontal: 20,
+    gap: 24,
   },
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+  categoryTabSimple: {
+    paddingVertical: 4,
   },
-  categoryCard: {
-    width: '42%',
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    paddingVertical: 7,
-    paddingHorizontal: 6,
-    alignItems: 'center',
-    marginBottom: 12,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+  categoryTabText: {
+    color: '#999999',
+    fontSize: 15,
+    fontWeight: '500',
   },
-  categoryIconHolder: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 5,
-  },
-  categoryCardText: {
-    textAlign: 'center',
+  categoryTabTextActive: {
     color: '#000000',
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingTop: 8,
     paddingBottom: 20,
   },
   recipeCard: {
     flexDirection: 'row',
-    backgroundColor: '#F8F9FA',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 16,
+    marginHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  recipeImageContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 16,
+    backgroundColor: '#F5F5F5',
+    marginRight: 14,
+    overflow: 'hidden',
+    position: 'relative',
   },
   recipeImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-    marginRight: 12,
-    overflow: 'hidden',
-  },
-  recipeImageContent: {
     width: '100%',
     height: '100%',
   },
+  growthScoreBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  growthScoreBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
   recipeContent: {
     flex: 1,
+    justifyContent: 'space-between',
   },
   recipeName: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: '#000000',
-    marginBottom: 4,
+    marginBottom: 6,
+    letterSpacing: -0.3,
   },
   recipeDescription: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666666',
-    marginBottom: 8,
+    marginBottom: 10,
+    lineHeight: 18,
   },
   recipeStats: {
     flexDirection: 'row',
-    marginBottom: 8,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  statText: {
-    fontSize: 12,
-    color: '#666666',
-    marginLeft: 4,
-  },
-  growthScoreContainer: {
+    flexWrap: 'wrap',
+    gap: 6,
     marginBottom: 12,
   },
-  growthScoreLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#000000',
-    marginBottom: 4,
+  statBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    gap: 4,
   },
-  growthScoreBar: {
-    height: 4,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-    borderRadius: 2,
-    marginBottom: 2,
-  },
-  growthScoreFill: {
-    height: '100%',
-    backgroundColor: '#4CD964',
-    borderRadius: 2,
-  },
-  growthScoreText: {
-    fontSize: 10,
+  statText: {
+    fontSize: 11,
     color: '#666666',
-    textAlign: 'right',
+    fontWeight: '600',
   },
   recipeActions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 4,
   },
   viewButton: {
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    marginRight: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
   },
   viewButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#000000',
   },
   addButton: {
     flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  addButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#000000',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    gap: 6,
   },
   addButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     color: '#FFFFFF',
-    marginLeft: 4,
   },
   // Recipe Detail Styles
   recipeDetailContainer: {
@@ -788,7 +908,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: Platform.OS === 'ios' ? 0 : 8,
     paddingBottom: 12,
     backgroundColor: '#FFFFFF',
   },
@@ -809,124 +929,152 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   recipeDetailImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-    alignSelf: 'center',
-    marginBottom: 16,
+    width: '100%',
+    height: 240,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+    marginBottom: 20,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
   },
   recipeDetailImageContent: {
     width: '100%',
     height: '100%',
   },
   recipeDetailDescription: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#666666',
     textAlign: 'center',
-    marginBottom: 16,
-    lineHeight: 20,
+    marginBottom: 20,
+    lineHeight: 22,
+    fontWeight: '500',
   },
   recipeDetailStats: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginBottom: 16,
+    marginBottom: 24,
+    paddingHorizontal: 8,
   },
   detailStatItem: {
     alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    minWidth: 80,
   },
   detailStatLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#666666',
-    marginTop: 4,
-    marginBottom: 2,
+    marginTop: 6,
+    marginBottom: 4,
+    fontWeight: '600',
   },
   detailStatValue: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#000000',
   },
   growthScoreDetailContainer: {
-    marginBottom: 16,
+    marginBottom: 24,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 16,
+    padding: 16,
   },
   growthScoreDetailLabel: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#000000',
-    marginBottom: 8,
+    marginBottom: 12,
     textAlign: 'center',
   },
   growthScoreDetailBar: {
-    height: 8,
+    height: 10,
     backgroundColor: 'rgba(0,0,0,0.1)',
-    borderRadius: 4,
-    marginBottom: 4,
+    borderRadius: 5,
+    marginBottom: 8,
+    overflow: 'hidden',
   },
   growthScoreDetailFill: {
     height: '100%',
     backgroundColor: '#4CD964',
-    borderRadius: 4,
+    borderRadius: 5,
   },
   growthScoreDetailText: {
-    fontSize: 14,
-    color: '#666666',
+    fontSize: 16,
+    color: '#000000',
     textAlign: 'center',
+    fontWeight: '700',
   },
   ingredientsContainer: {
-    marginBottom: 16,
-    paddingLeft: 8,
+    marginBottom: 24,
   },
   ingredientsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#000000',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   ingredientItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
   ingredientText: {
     fontSize: 14,
     color: '#000000',
-    marginLeft: 8,
+    marginLeft: 10,
+    fontWeight: '500',
   },
   instructionsContainer: {
-    marginBottom: 16,
-    paddingLeft: 8,
+    marginBottom: 24,
   },
   instructionsTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#000000',
     marginBottom: 12,
   },
   instructionsText: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#666666',
-    lineHeight: 22,
+    lineHeight: 24,
+    fontWeight: '400',
   },
   recipeDetailActions: {
-    marginBottom: 28,
-    paddingLeft: 8,
+    marginBottom: 32,
   },
   addToPlanButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  addToPlanButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#000000',
     paddingVertical: 16,
     paddingHorizontal: 24,
-    borderRadius: 8,
+    gap: 8,
   },
   addToPlanButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#FFFFFF',
-    marginLeft: 8,
   },
 });
 
 export default RecipeLibrary;
+

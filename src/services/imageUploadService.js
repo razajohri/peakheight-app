@@ -1,8 +1,9 @@
 import { supabase } from '../config/supabase';
+import * as FileSystem from 'expo-file-system';
 
-// Simplified image upload service - stores local URIs for now
+// Image upload service for Supabase Storage
 export class ImageUploadService {
-  // Upload image to Supabase Storage (simplified version)
+  // Upload image to Supabase Storage
   static async uploadPostImage(imageUri, userId) {
     try {
       console.log('ImageUploadService: Starting upload for user:', userId);
@@ -15,22 +16,102 @@ export class ImageUploadService {
         throw new Error('User not authenticated');
       }
 
-      // For now, just return the local URI
-      // This ensures the app works while we debug the upload issue
-      console.log('ImageUploadService: Using local URI as fallback');
+      // Skip if already a web URL (already uploaded)
+      if (imageUri && (imageUri.startsWith('http://') || imageUri.startsWith('https://'))) {
+        console.log('ImageUploadService: Already a web URL, skipping upload');
+        return {
+          success: true,
+          url: imageUri,
+          path: imageUri,
+          fallback: false
+        };
+      }
+
+      // Determine MIME type from URI
+      // Note: HEIC files from iOS should be converted to JPEG by ImagePicker
+      // If we still get HEIC, we'll treat it as JPEG since ImagePicker handles conversion
+      let mimeType = 'image/jpeg';
+      let fileExtension = 'jpg';
+      
+      const uriLower = imageUri.toLowerCase();
+      if (uriLower.endsWith('.png')) {
+        mimeType = 'image/png';
+        fileExtension = 'png';
+      } else if (uriLower.endsWith('.heic') || uriLower.endsWith('.heif')) {
+        // HEIC files should be converted to JPEG, but if we get one, treat as JPEG
+        // The actual conversion happens in ImagePicker, so the file is likely JPEG already
+        mimeType = 'image/jpeg';
+        fileExtension = 'jpg';
+        console.log('ImageUploadService: HEIC file detected, treating as JPEG (ImagePicker should have converted it)');
+      } else if (uriLower.endsWith('.webp')) {
+        mimeType = 'image/webp';
+        fileExtension = 'webp';
+      }
+
+      // Generate unique file path
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 15);
+      const filePath = `${userId}/${timestamp}-${randomId}.${fileExtension}`;
+
+      console.log('ImageUploadService: Uploading to path:', filePath, 'MIME type:', mimeType);
+
+      // Read file as base64 and convert to blob for upload
+      let fileData;
+      try {
+        fileData = await FileSystem.readAsStringAsync(imageUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        console.log('ImageUploadService: File read successfully, size:', fileData.length, 'characters');
+      } catch (readError) {
+        console.error('ImageUploadService: Error reading file:', readError);
+        throw new Error(`Failed to read image file: ${readError.message}`);
+      }
+
+      // Convert base64 to binary data
+      const byteCharacters = atob(fileData);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+
+      // Upload to Supabase Storage
+      // Supabase accepts ArrayBuffer/Uint8Array in React Native
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('post-images')
+        .upload(filePath, byteArray, {
+          contentType: mimeType,
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error('ImageUploadService: Upload error:', uploadError);
+        throw new Error(`Upload failed: ${uploadError.message}`);
+      }
+
+      console.log('ImageUploadService: Upload successful:', uploadData);
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('post-images')
+        .getPublicUrl(filePath);
+
+      console.log('ImageUploadService: Public URL:', publicUrl);
 
       return {
         success: true,
-        url: imageUri,
-        path: `local/${userId}/${Date.now()}`,
-        fallback: true
+        url: publicUrl,
+        path: filePath,
+        fallback: false
       };
 
     } catch (error) {
       console.error('ImageUploadService: Error:', error);
       return {
         success: false,
-        error: error.message
+        error: error.message,
+        url: null,
+        path: null
       };
     }
   }
@@ -77,20 +158,35 @@ export class ImageUploadService {
     try {
       console.log('ImageUploadService: Deleting image:', imagePath);
 
-      // For local URIs, there's nothing to delete
-      if (imagePath.startsWith('local/')) {
-        console.log('ImageUploadService: Local image, nothing to delete');
+      // For local URIs or invalid paths, there's nothing to delete
+      if (!imagePath || imagePath.startsWith('local/') || imagePath.startsWith('file://')) {
+        console.log('ImageUploadService: Local/invalid image path, nothing to delete');
         return { success: true };
+      }
+
+      // Extract path from full URL if needed
+      let storagePath = imagePath;
+      if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+        // Extract path from Supabase Storage URL
+        // URL format: https://[project].supabase.co/storage/v1/object/public/post-images/[path]
+        const urlParts = imagePath.split('/post-images/');
+        if (urlParts.length > 1) {
+          storagePath = urlParts[1];
+        } else {
+          console.warn('ImageUploadService: Could not extract path from URL:', imagePath);
+          return { success: false, error: 'Invalid URL format' };
+        }
       }
 
       const { error } = await supabase.storage
         .from('post-images')
-        .remove([imagePath]);
+        .remove([storagePath]);
 
       if (error) {
         throw new Error(`Delete failed: ${error.message}`);
       }
 
+      console.log('ImageUploadService: Image deleted successfully:', storagePath);
       return { success: true };
     } catch (error) {
       console.error('ImageUploadService: Delete error:', error);
@@ -105,11 +201,21 @@ export class ImageUploadService {
   static getImageUrl(imagePath) {
     console.log('ImageUploadService: Getting image URL for:', imagePath);
 
-    // For local URIs, return as-is
-    if (imagePath.startsWith('local/') || imagePath.startsWith('file://')) {
+    // If already a full URL, return as-is
+    if (imagePath && (imagePath.startsWith('http://') || imagePath.startsWith('https://'))) {
       return imagePath;
     }
 
+    // For local URIs or invalid paths, return null (will be filtered out)
+    if (!imagePath || imagePath.startsWith('local/') || imagePath.startsWith('file://')) {
+      // Only log warning if it's not a known iOS cache path (these are expected to be filtered)
+      if (!imagePath.includes('/Library/Caches/')) {
+        console.warn('ImageUploadService: Invalid image path:', imagePath);
+      }
+      return null;
+    }
+
+    // Get public URL from Supabase Storage
     const { data: { publicUrl } } = supabase.storage
       .from('post-images')
       .getPublicUrl(imagePath);
